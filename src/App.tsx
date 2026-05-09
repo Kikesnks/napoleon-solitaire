@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Board } from "./components/Board";
 import { GameOverlay } from "./components/GameOverlay";
 import { HUD } from "./components/HUD";
@@ -56,6 +57,7 @@ export default function App() {
         elapsedMs={elapsedMs}
         onPlayAgain={() => engine.newGame()}
       />
+      <SpeedInsights />
     </div>
   );
 }
