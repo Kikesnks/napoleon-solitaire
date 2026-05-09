@@ -1,6 +1,9 @@
+import type { Lang } from "../i18n/strings";
+import { STRINGS } from "../i18n/strings";
 import { formatElapsed } from "../hooks/useTimer";
 
 interface Props {
+  lang: Lang;
   score: number;
   elapsedMs: number;
   round: number;
@@ -9,9 +12,11 @@ interface Props {
   canUndo: boolean;
   onUndo(): void;
   onNewGame(): void;
+  onShowRules(): void;
 }
 
 export function HUD({
+  lang,
   score,
   elapsedMs,
   round,
@@ -19,29 +24,40 @@ export function HUD({
   montonRemaining,
   canUndo,
   onUndo,
-  onNewGame
+  onNewGame,
+  onShowRules
 }: Props) {
+  const t = STRINGS[lang];
   return (
     <header className="hud">
       <div className="hud__stats">
-        <Stat label="Tiempo" value={formatElapsed(elapsedMs)} />
-        <Stat label="Puntos" value={score.toString()} />
-        <Stat label="Ronda" value={`${round}/4`} />
-        <Stat label="Mov." value={moves.toString()} />
-        <Stat label="Montón" value={montonRemaining.toString()} />
+        <Stat label={t.time} value={formatElapsed(elapsedMs)} />
+        <Stat label={t.score} value={score.toString()} />
+        <Stat label={t.round} value={`${round}/4`} />
+        <Stat label={t.moves} value={moves.toString()} />
+        <Stat label={t.monton} value={montonRemaining.toString()} />
       </div>
       <div className="hud__actions">
+        <button
+          type="button"
+          className="hud__btn hud__btn--icon"
+          onClick={onShowRules}
+          aria-label={t.rules}
+          title={t.rules}
+        >
+          📖
+        </button>
         <button
           type="button"
           className="hud__btn"
           onClick={onUndo}
           disabled={!canUndo}
-          aria-label="Deshacer"
+          aria-label={t.undo}
         >
-          ↶ Deshacer
+          ↶ {t.undo}
         </button>
         <button type="button" className="hud__btn hud__btn--primary" onClick={onNewGame}>
-          Nueva
+          {t.newGame}
         </button>
       </div>
     </header>

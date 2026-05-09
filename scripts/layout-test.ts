@@ -98,6 +98,14 @@ async function main(): Promise<void> {
       // Espera a que React monte
       await page.waitForSelector(".board", { timeout: 5000 });
 
+      // En primer arranque (localStorage limpio por contexto nuevo) las
+      // instrucciones tapan el tablero. Las descartamos antes de medir.
+      const hadInstructions = await page.$(".instructions__cta");
+      if (hadInstructions) {
+        await page.click(".instructions__cta");
+        await page.waitForTimeout(80);
+      }
+
       // Para el viewport de dark mode, hacemos un deal para que aparezca al
       // menos una carta boca arriba y podamos comprobar el contraste.
       if (vp.colorScheme === "dark") {

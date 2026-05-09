@@ -99,6 +99,16 @@ npx cap open android
 npx cap open ios
 ```
 
+## Pantalla de instrucciones
+
+Al primer arranque (o al pulsar el botón **📖** del HUD) aparece un modal con
+las reglas completas y un toggle **ES / EN** en la esquina. La elección de
+idioma se persiste en `localStorage` (`solnap.lang`) y afecta al HUD y al
+overlay de fin de partida. Para saltarse las instrucciones basta con pulsar
+**Empezar a jugar / Start playing**; tras la primera vez ya no se vuelven a
+mostrar automáticamente — pero quedan accesibles desde el HUD en cualquier
+momento. Tecla `Esc` también cierra el modal.
+
 ## Controles
 
 - **Tap / clic** sobre una carta: intenta promoverla a una fundación.
@@ -106,6 +116,7 @@ npx cap open ios
   válida.
 - **Tap en el montón**: reparte la siguiente tirada (4/3/2/1 según ronda).
   Cuando el montón está vacío, recoge las pilas y entra en la siguiente ronda.
+- **Botón 📖**: abre la pantalla de instrucciones en cualquier momento.
 - **Botón Deshacer** o tecla **U**: revierte el último movimiento (incluido
   el reparto del montón).
 - **Espacio**: atajo del reparto.

@@ -32,19 +32,32 @@ interface VP {
   name: string;
   width: number;
   height: number;
-  // Si interactuamos: cuántos clicks al montón antes de la captura.
+  /** Cuántos clicks al montón antes de la captura. */
   deals: number;
   colorScheme?: "light" | "dark";
+  /** Si true, NO descarta el modal de instrucciones (para capturarlo). */
+  showInstructions?: boolean;
+  /** Si tras cerrar instrucciones queremos cambiar a EN antes. */
+  langEN?: boolean;
 }
 
 const SHOTS: VP[] = [
+  // Pantalla de instrucciones en primer arranque (ES y EN)
+  { name: "instructions-es-laptop", width: 1366, height: 768, deals: 0, showInstructions: true },
+  {
+    name: "instructions-en-laptop",
+    width: 1366,
+    height: 768,
+    deals: 0,
+    showInstructions: true,
+    langEN: true
+  },
+  { name: "instructions-es-mobile", width: 375, height: 667, deals: 0, showInstructions: true },
+  // Tablero ya en juego
   { name: "laptop-1366x768-initial", width: 1366, height: 768, deals: 0 },
   { name: "laptop-1366x768-after-1-deal", width: 1366, height: 768, deals: 1 },
   { name: "mobile-portrait-375x667-initial", width: 375, height: 667, deals: 0 },
   { name: "mobile-portrait-375x667-after-1-deal", width: 375, height: 667, deals: 1 },
-  // Android con preferencia oscura del sistema; con color-scheme: only light
-  // declarado, las cartas siguen blancas. Si Auto-Dark de Chrome estuviera
-  // activo, esta captura también debería verse OK.
   {
     name: "android-dark-pref-412x869",
     width: 412,
@@ -52,13 +65,7 @@ const SHOTS: VP[] = [
     deals: 1,
     colorScheme: "dark"
   },
-  // Ronda 2 — verificar que sólo hay 3 slots, centrados.
-  {
-    name: "laptop-round-2-3-slots",
-    width: 1366,
-    height: 768,
-    deals: 17 // 16 deals para vaciar montón + 1 click para advanceRound
-  }
+  { name: "laptop-round-2-3-slots", width: 1366, height: 768, deals: 17 }
 ];
 
 async function main(): Promise<void> {
@@ -74,6 +81,17 @@ async function main(): Promise<void> {
       const page = await ctx.newPage();
       await page.goto(URL, { waitUntil: "networkidle" });
       await page.waitForSelector(".board");
+      if (vp.langEN) {
+        await page.click('.instructions__lang-btn:has-text("EN")');
+        await page.waitForTimeout(60);
+      }
+      if (!vp.showInstructions) {
+        const cta = await page.$(".instructions__cta");
+        if (cta) {
+          await cta.click();
+          await page.waitForTimeout(80);
+        }
+      }
       for (let i = 0; i < vp.deals; i++) {
         await page.click('[data-pile-id="monton"]');
         await page.waitForTimeout(60);

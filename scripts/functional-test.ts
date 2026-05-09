@@ -46,9 +46,45 @@ async function main(): Promise<void> {
   };
 
   try {
-    const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+    // Contexto sin localStorage previo: la primera visita debe mostrar las
+    // instrucciones automáticamente.
+    const ctx = await browser.newContext({
+      viewport: { width: 1366, height: 768 }
+    });
+    const page = await ctx.newPage();
     await page.goto(URL, { waitUntil: "networkidle" });
     await page.waitForSelector(".board", { timeout: 5000 });
+
+    // ---------- 0. Instrucciones aparecen en primer arranque ----------
+    const hasInstructions = await page.$(".instructions");
+    if (hasInstructions) {
+      ok("primer arranque: pantalla de instrucciones visible");
+    } else {
+      fail("primer arranque: NO aparece la pantalla de instrucciones");
+    }
+
+    // Toggle de idioma EN
+    await page.click('.instructions__lang-btn:has-text("EN")');
+    await page.waitForTimeout(50);
+    const titleEN = await page.textContent(".instructions__title");
+    if (titleEN && titleEN.toLowerCase().includes("rules")) {
+      ok(`toggle EN: título "${titleEN}"`);
+    } else {
+      fail(`toggle EN: título no cambió, sigue "${titleEN}"`);
+    }
+    // Volver a ES
+    await page.click('.instructions__lang-btn:has-text("ES")');
+    await page.waitForTimeout(50);
+
+    // Pulsa "Empezar a jugar" para entrar al juego
+    await page.click(".instructions__cta");
+    await page.waitForTimeout(120);
+    const stillVisible = await page.$(".instructions");
+    if (!stillVisible) {
+      ok("dismiss: tras pulsar 'Empezar a jugar' se cierra el modal");
+    } else {
+      fail("dismiss: el modal sigue visible tras pulsar 'Empezar a jugar'");
+    }
 
     // ---------- 1. Estado inicial: top del montón boca abajo ----------
     const cardClassesAt = (id: string) =>
@@ -157,6 +193,36 @@ async function main(): Promise<void> {
       ok(`ronda 1: ${dealCounts.length} slots activos (${dealCounts.join(", ")})`);
     } else {
       fail(`ronda 1: esperaba 4 slots, hay ${dealCounts?.length ?? 0} (${dealCounts?.join(",") ?? "null"})`);
+    }
+
+    // ---------- 6. Botón 📖 Reglas reabre la pantalla de instrucciones ----------
+    await page.click('.hud__btn--icon');
+    await page.waitForTimeout(100);
+    const reopened = await page.$(".instructions");
+    if (reopened) {
+      ok("botón 📖: reabre la pantalla de instrucciones");
+    } else {
+      fail("botón 📖: NO reabre la pantalla de instrucciones");
+    }
+    // El CTA ahora dice "Cerrar" (no "Empezar a jugar") porque ya no es first-run
+    const ctaText = (await page.textContent(".instructions__cta")) ?? "";
+    if (ctaText.trim().toLowerCase() === "cerrar") {
+      ok(`reapertura: el botón dice "${ctaText.trim()}" (no first-run)`);
+    } else {
+      fail(`reapertura: esperaba "Cerrar", el botón dice "${ctaText.trim()}"`);
+    }
+    await page.click(".instructions__cta");
+    await page.waitForTimeout(80);
+
+    // ---------- 7. Recargar la página NO vuelve a mostrar instrucciones ----------
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForSelector(".board", { timeout: 5000 });
+    await page.waitForTimeout(120);
+    const afterReload = await page.$(".instructions");
+    if (!afterReload) {
+      ok("recarga: las instrucciones NO se vuelven a mostrar (persistencia OK)");
+    } else {
+      fail("recarga: las instrucciones reaparecen tras recargar (persistencia rota)");
     }
   } finally {
     await browser.close();

@@ -586,3 +586,147 @@ button {
   font-size: 22px;
   font-weight: 700;
 }
+
+/* ---------- Botón icono del HUD (📖 Reglas) ---------- */
+.hud__btn--icon {
+  padding: 6px 10px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ---------- 9. Pantalla de instrucciones ----------
+   Modal full-screen con cabecera (título + toggle ES/EN), cuerpo scrollable
+   con las reglas, y pie con el CTA "Empezar / Cerrar". Funciona tanto al
+   primer arranque (firstRun=true) como al pulsar "📖 Reglas" en el HUD. */
+
+.instructions {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  padding: 12px;
+  /* En el modal sí permitimos pan/scroll con el dedo (es texto largo). */
+  touch-action: auto;
+}
+
+.instructions__panel {
+  background: #fdfdfb;
+  color: #1d2025;
+  border-radius: 14px;
+  width: min(680px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.instructions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, #f7f3ea 0%, #efeada 100%);
+}
+
+.instructions__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0b3d1f;
+  flex: 1;
+  min-width: 0;
+}
+
+.instructions__lang {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.instructions__lang-btn {
+  border: 0;
+  background: transparent;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.instructions__lang-btn.is-active {
+  background: #0b3d1f;
+  color: #fff;
+}
+
+.instructions__body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 22px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #2a2a2a;
+}
+
+.instructions__body section {
+  margin-bottom: 14px;
+}
+
+.instructions__body h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0b3d1f;
+}
+
+.instructions__body p {
+  margin: 0 0 8px;
+}
+
+.instructions__body ul {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.instructions__body li {
+  margin-bottom: 4px;
+}
+
+.instructions__body kbd {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #e8e3d5;
+  border: 1px solid #c7c1b3;
+  color: #333;
+}
+
+.instructions__body strong {
+  font-weight: 700;
+  color: #0b3d1f;
+}
+
+.instructions__footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  background: #fafaf6;
+}
+
+.instructions__cta {
+  min-width: 160px;
+}

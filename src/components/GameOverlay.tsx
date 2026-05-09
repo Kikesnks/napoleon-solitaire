@@ -1,37 +1,37 @@
+import type { Lang } from "../i18n/strings";
+import { STRINGS } from "../i18n/strings";
 import { formatElapsed } from "../hooks/useTimer";
 import type { Status } from "../game";
 
 interface Props {
+  lang: Lang;
   status: Status;
   score: number;
   elapsedMs: number;
   onPlayAgain(): void;
 }
 
-export function GameOverlay({ status, score, elapsedMs, onPlayAgain }: Props) {
+export function GameOverlay({ lang, status, score, elapsedMs, onPlayAgain }: Props) {
   if (status === "playing") return null;
+  const t = STRINGS[lang];
   const won = status === "won";
   return (
     <div className="overlay" role="dialog" aria-modal="true">
       <div className={`overlay__panel ${won ? "overlay__panel--win" : "overlay__panel--lose"}`}>
-        <h2 className="overlay__title">{won ? "¡Has ganado!" : "Fin de la partida"}</h2>
-        <p className="overlay__message">
-          {won
-            ? "Solitario completado."
-            : "Se acabaron los repartos del montón sin ordenar todas las cartas."}
-        </p>
+        <h2 className="overlay__title">{won ? t.won : t.lost}</h2>
+        <p className="overlay__message">{won ? t.wonMessage : t.lostMessage}</p>
         <dl className="overlay__stats">
           <div>
-            <dt>Puntuación</dt>
+            <dt>{t.score}</dt>
             <dd>{score}</dd>
           </div>
           <div>
-            <dt>Tiempo</dt>
+            <dt>{t.time}</dt>
             <dd>{formatElapsed(elapsedMs)}</dd>
           </div>
         </dl>
         <button type="button" className="hud__btn hud__btn--primary" onClick={onPlayAgain}>
-          Jugar otra
+          {t.playAgain}
         </button>
       </div>
     </div>
