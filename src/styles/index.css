@@ -1,0 +1,588 @@
+/* ============================================================
+   Solitario Napoleón — estilos
+   Layout: una sola pantalla, sin scroll, basado en la página 9 del PDF
+   (POSICION DE TODAS LAS CARTAS II).
+
+   Estructura del archivo:
+   1. Variables y reset
+   2. Layout principal (.app)
+   3. HUD
+   4. Tablero — grid en cruz
+   5. Pilas
+   6. Pilas horizontales (B, B1, D, D1)
+   7. Cartas
+   8. Overlay fin de partida
+   ============================================================ */
+
+/* ---------- 1. Variables y reset ---------- */
+
+:root {
+  --table: #0b3d1f;
+  --table-edge: #082c16;
+  --slot: rgba(255, 255, 255, 0.08);
+  --slot-border: rgba(255, 255, 255, 0.22);
+  --slot-target: #ffd166;
+  /* Cartas: fondo blanco puro y rojos/negros vivos para máximo contraste
+     en cualquier dispositivo (la versión mobile tenía un off-white que en
+     pantallas pequeñas perdía contraste contra el verde de la mesa). */
+  --card-bg: #ffffff;
+  --card-back: linear-gradient(135deg, #1a3b6e 0%, #2c5fa1 50%, #1a3b6e 100%);
+  --card-back-pattern: rgba(255, 255, 255, 0.10);
+  --card-red: #c8102e;
+  --card-black: #050505;
+  --card-border: rgba(0, 0, 0, 0.55);
+  --hud-bg: rgba(0, 0, 0, 0.35);
+  --hud-fg: #f4f1ea;
+  --primary: #ffd166;
+  --shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+  --radius: 6px;
+
+  /* Altura aproximada del HUD; se usa para calcular el tamaño máximo de carta. */
+  --hud-h: 56px;
+  --gap: clamp(3px, 0.9vw, 9px);
+
+  /* Layout en cruz con TODAS las cartas del mismo tamaño:
+     - 6 columnas: 5 son `card-w` (verticales), columna 3 es `card-h`
+       (ancho de una carta horizontal rotada).
+     - 4 filas:
+         · Fila 1 (foundations + B1+B): max(card-h, 2·card-w + sub-gap)
+           = 2·card-w + sub-gap (porque 2·card-w > card-h con ratio 1.45).
+         · Fila 2 (free cells row): card-h.
+         · Fila 3 (D + D1): 2·card-w + sub-gap.
+         · Fila 4 (pilas de reparto): card-h.
+     - sub-gap interno entre las dos cartas de un substack: 4px.
+
+     Ancho total = 5·card-w + card-h + 5·gap = 6.45·card-w + 5·gap.
+     Alto total  = 4·card-w + 2·card-h + 3·gap + 8 = 6.9·card-w + 3·gap + 8. */
+  --safe-h: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  /* Altura disponible. iOS Safari mide `100vh` como el viewport con la URL
+     bar OCULTA — más alto que la zona realmente visible. Esto provocaba que
+     el cálculo de card-w diera un tamaño excesivo y el `overflow: hidden`
+     del .app__main RECORTASE el tablero (parecía que la app no cargaba).
+     Con `100svh` (small viewport height) la fórmula usa el viewport más
+     pequeño posible (URL bar visible). Si el navegador no soporta svh, cae
+     al `vh` clásico. */
+  --avail-h: calc(100vh - var(--hud-h) - 2 * var(--gap) - var(--safe-h));
+  --avail-h: calc(100svh - var(--hud-h) - 2 * var(--gap) - var(--safe-h));
+  --avail-w: calc(100vw - 2 * var(--gap));
+
+  --substack-gap: 4px;
+  --deal-separator: 14px; /* espacio (con la línea fina) entre D1 y las pilas de reparto */
+  --max-w-from-h: calc((var(--avail-h) - 3 * var(--gap) - 2 * var(--substack-gap) - var(--deal-separator)) / 6.9);
+  --max-w-from-w: calc((var(--avail-w) - 5 * var(--gap)) / 6.45);
+
+  /* Fallback estático para navegadores sin clamp/min anidado (iOS < 13.4
+     y similares). Después declaramos la versión moderna que sobrescribe. */
+  --card-w: 56px;
+  --card-w: clamp(34px, min(var(--max-w-from-h), var(--max-w-from-w)), 92px);
+  --card-h: calc(var(--card-w) * 1.45);
+
+  /* Opt-out del Auto-Dark del Android Chrome. Con `only light` el motor
+     deja la página con sus colores reales y no invierte fondos/textos. */
+  color-scheme: only light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  color: var(--hud-fg);
+  background: var(--table);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  /* Soporte iOS notch */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#root {
+  height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- 2. Layout principal ---------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: radial-gradient(ellipse at center, var(--table) 0%, var(--table-edge) 100%);
+}
+
+.app__main {
+  flex: 1;
+  min-height: 0; /* permite a flex contraerse */
+  overflow: hidden; /* sin scroll: las cartas se escalan para caber */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap);
+}
+
+/* ---------- 3. HUD ---------- */
+
+.hud {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--hud-bg);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: var(--hud-h);
+}
+
+.hud__stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.hud__stat {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  min-width: 38px;
+}
+
+.hud__stat-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.hud__stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.hud__btn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--hud-fg);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.05s;
+}
+
+.hud__btn:active {
+  transform: scale(0.96);
+}
+
+.hud__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hud__btn--primary {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+}
+
+/* ---------- 4. Tablero — grid en cruz ----------
+   Replica el layout de la página 9 del PDF "POSICION DE TODAS LAS CARTAS II":
+
+       I    II   [B1]   III  IV   M
+                 [B]
+       A1   A    [X]    C    C1   .
+                 [D]
+                 [D1]
+        .   p1   p2     p3   p4   .
+
+   Las áreas `subTop` y `subBot` contienen B1+B y D+D1 apiladas verticalmente.
+*/
+
+.board {
+  display: grid;
+  grid-template-columns:
+    var(--card-w) var(--card-w) var(--card-h) var(--card-w) var(--card-w) var(--card-w);
+  grid-template-rows:
+    calc(2 * var(--card-w) + var(--substack-gap))
+    var(--card-h)
+    calc(2 * var(--card-w) + var(--substack-gap))
+    calc(var(--card-h) + var(--deal-separator));
+  grid-template-areas:
+    "fI  fII  subTop fIII fIV  mon"
+    "fA1 fA   fX     fC   fC1  ."
+    ".   .    subBot .    .    ."
+    "deal deal deal  deal deal deal";
+  gap: var(--gap);
+  align-content: center;
+  justify-content: center;
+}
+
+.pile[data-pile-id="I"] { grid-area: fI; }
+.pile[data-pile-id="II"] { grid-area: fII; }
+.pile[data-pile-id="III"] { grid-area: fIII; }
+.pile[data-pile-id="IV"] { grid-area: fIV; }
+.pile[data-pile-id="monton"] { grid-area: mon; }
+.pile[data-pile-id="A1"] { grid-area: fA1; }
+.pile[data-pile-id="A"] { grid-area: fA; }
+.pile[data-pile-id="X"] { grid-area: fX; }
+.pile[data-pile-id="C"] { grid-area: fC; }
+.pile[data-pile-id="C1"] { grid-area: fC1; }
+.pile[data-pile-id="pile1"] { grid-area: p1; }
+.pile[data-pile-id="pile2"] { grid-area: p2; }
+.pile[data-pile-id="pile3"] { grid-area: p3; }
+.pile[data-pile-id="pile4"] { grid-area: p4; }
+
+.board__substack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--substack-gap);
+  height: 100%;
+  width: 100%;
+}
+
+.board__substack--top { grid-area: subTop; }
+.board__substack--bot { grid-area: subBot; }
+
+/* Pilas de reparto en su propia fila full-width.
+   La fila contiene SÓLO los slots activos según la ronda (4/3/2/1).
+   Centradas en la COLUMNA 3 (donde está la pila X), no en el centro
+   geométrico del grid: la columna 3 es card-h de ancha (más ancha que
+   las otras 5 columnas que son card-w), así que el centro geométrico
+   queda desplazado a la derecha del centro de col 3 por
+   `0.5·card-w + 0.5·gap`. Compensamos con un translateX negativo. */
+.board__deal {
+  grid-area: deal;
+  display: flex;
+  gap: var(--gap);
+  align-items: end;
+  justify-content: center;
+  position: relative;
+  padding-top: var(--deal-separator);
+  transform: translateX(calc(-0.5 * var(--card-w) - 0.5 * var(--gap)));
+}
+
+.board__deal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.32) 18%,
+    rgba(255, 255, 255, 0.32) 82%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ---------- 5. Pilas ---------- */
+
+.pile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+/* Label oculto: la posición se identifica por su lugar en el grid. Mantener
+   el elemento en el DOM (lo lee un screen reader si lo necesita) pero sin
+   robar altura al layout. */
+.pile__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pile__slot {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--radius);
+  background: var(--slot);
+  border: 1.5px dashed var(--slot-border);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pile--target .pile__slot {
+  border-color: var(--slot-target);
+  background: rgba(255, 209, 102, 0.18);
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.35);
+}
+
+.pile__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--card-w) * 0.45);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+.pile__card {
+  position: absolute;
+  width: 100%;
+  height: var(--card-h);
+}
+
+.pile__hidden-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background: var(--slot);
+  border: 1.5px dashed var(--slot-border);
+}
+
+.pile__empty-target {
+  position: absolute;
+  inset: 0;
+}
+
+.pile--monton-empty .pile__slot {
+  border-style: solid;
+  cursor: pointer;
+}
+
+/* Indicador de número de cartas cuando hay más de una en la pila (para deal
+   piles y free cells con stack ascendente). */
+.pile__count {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--hud-fg);
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 700;
+  z-index: 5;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 6. Pilas horizontales (B, B1, D, D1) ----------
+   El slot mide card-h × card-w (igual que el bounding rect visual de una
+   carta vertical rotada 90° SIN escalar). La carta interna conserva su tamaño
+   intrínseco — lo que cambia es la transformación. El resultado: las cartas
+   horizontales tienen exactamente el mismo tamaño que las verticales, sólo
+   están tumbadas. */
+
+.pile--horizontal .pile__slot {
+  width: var(--card-h);
+  height: var(--card-w);
+}
+
+.pile--horizontal .pile__card {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pile--horizontal .card {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.pile--horizontal .card--dragging {
+  /* El overlay del drag vive fuera de .pile--horizontal (en el body con
+     position: fixed), así que en la práctica no aplica. Por seguridad. */
+  transform: scale(1.05) rotate(-1deg);
+}
+
+/* ---------- 7. Cartas ---------- */
+
+.card {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 5px;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.08s ease;
+  font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  border: 1px solid var(--card-border);
+  /* Sin esto, el navegador captura el touch como pan/scroll y los Pointer
+     Events no llegan en mitad del drag. */
+  touch-action: none;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card--inert {
+  cursor: default;
+}
+
+.card--inert:active {
+  transform: none;
+}
+
+.card--red {
+  color: var(--card-red);
+}
+
+.card--black {
+  color: var(--card-black);
+}
+
+.card--back {
+  background: var(--card-back);
+  border-color: rgba(0, 0, 0, 0.4);
+  background-image:
+    linear-gradient(45deg, var(--card-back-pattern) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--card-back-pattern) 25%, transparent 25%),
+    var(--card-back);
+  background-size: 8px 8px, 8px 8px, auto;
+}
+
+.card--dragging {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.55);
+  transform: scale(1.05) rotate(-1deg);
+}
+
+.card__corner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.card__corner--br {
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+
+.card__rank {
+  font-size: calc(var(--card-w) * 0.28);
+  font-weight: 800;
+}
+
+.card__suit {
+  font-size: calc(var(--card-w) * 0.24);
+}
+
+.card__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--card-w) * 0.55);
+  pointer-events: none;
+  opacity: 1;
+}
+
+/* ---------- 8. Overlay fin de partida ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  padding: 20px;
+  z-index: 999;
+}
+
+.overlay__panel {
+  background: #1a1a1a;
+  border-radius: 16px;
+  padding: 28px 24px;
+  width: min(360px, 100%);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.overlay__panel--win {
+  border-color: var(--primary);
+  box-shadow: 0 20px 60px rgba(255, 209, 102, 0.25);
+}
+
+.overlay__title {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.overlay__message {
+  margin: 0 0 18px;
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+.overlay__stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 0 0 20px;
+}
+
+.overlay__stats > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay__stats dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  letter-spacing: 0.05em;
+}
+
+.overlay__stats dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}

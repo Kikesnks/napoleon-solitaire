@@ -1,0 +1,26 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+android
+ios
+.env
+.env.local
+screenshots
+
+# Build outputs y caché de TypeScript / Vite
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Locks temporales de LibreOffice / Office mientras un fichero está abierto
+.~lock.*#
+~$*
+
+# Configuración local de Claude Code y notas locales del autor
+.claude/
+FALLOS*.txt
