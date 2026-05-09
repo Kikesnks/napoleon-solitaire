@@ -1,6 +1,68 @@
 import type { Lang } from "../i18n/strings";
 import { STRINGS } from "../i18n/strings";
 
+/**
+ * Diagrama del tablero a escala reducida. Mismo layout en cruz que la página 9
+ * del PDF de reglas y que `Board.tsx`: 6 columnas (col 3 más ancha para
+ * acomodar las cartas horizontales), 4 filas, sub-stacks B1+B y D+D1 en col 3,
+ * pilas de reparto en su propia fila centradas bajo X. Las etiquetas
+ * universales (A, B, C, ..., I, II, ..., 1-4, X, M) no necesitan traducción.
+ */
+function BoardDiagram() {
+  return (
+    <figure className="diagram" aria-label="Disposición del tablero / Board layout">
+      <div className="diagram__grid">
+        <Slot id="I" />
+        <Slot id="II" />
+        <div className="diagram__substack diagram__substack--top">
+          <Slot id="B1" horizontal />
+          <Slot id="B" horizontal />
+        </div>
+        <Slot id="III" />
+        <Slot id="IV" />
+        <Slot id="M" emphasis />
+
+        <Slot id="A1" />
+        <Slot id="A" />
+        <Slot id="X" />
+        <Slot id="C" />
+        <Slot id="C1" />
+
+        <div className="diagram__substack diagram__substack--bot">
+          <Slot id="D" horizontal />
+          <Slot id="D1" horizontal />
+        </div>
+
+        <div className="diagram__deal">
+          <Slot id="1" />
+          <Slot id="2" />
+          <Slot id="3" />
+          <Slot id="4" />
+        </div>
+      </div>
+    </figure>
+  );
+}
+
+function Slot({
+  id,
+  horizontal = false,
+  emphasis = false
+}: {
+  id: string;
+  horizontal?: boolean;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={`diagram__slot ${horizontal ? "diagram__slot--horizontal" : ""} ${emphasis ? "diagram__slot--emphasis" : ""}`}
+      data-pos={id}
+    >
+      <span>{id}</span>
+    </div>
+  );
+}
+
 interface Props {
   lang: Lang;
   onLangChange(next: Lang): void;
@@ -73,21 +135,28 @@ function RulesES() {
       </section>
 
       <section>
-        <h3>Disposición inicial</h3>
+        <h3>Disposición del tablero</h3>
+        <BoardDiagram />
         <ul>
           <li>
-            <strong>4 pilas A, B, C, D</strong>: 9 cartas boca abajo cada una con la carta
+            <strong>I, II, III, IV</strong>: fundaciones descendentes.
+          </li>
+          <li>
+            <strong>X</strong>: fundación ascendente.
+          </li>
+          <li>
+            <strong>A, B, C, D</strong>: pilas iniciales, 9 cartas cada una con la
             superior boca arriba.
           </li>
           <li>
-            <strong>4 free cells A1, B1, C1, D1</strong>: una carta boca arriba (sacada
-            de la cima de A, B, C, D respectivamente).
+            <strong>A1, B1, C1, D1</strong>: free cells (B1 y D1 horizontales).
           </li>
           <li>
-            <strong>Fundaciones I, II, III, IV y X</strong>: vacías al empezar.
+            <strong>1, 2, 3, 4</strong>: pilas donde se vuelcan las cartas del montón
+            durante la ronda.
           </li>
           <li>
-            <strong>Montón</strong>: las 64 cartas restantes, boca abajo.
+            <strong>M</strong>: montón (las 64 cartas restantes boca abajo al empezar).
           </li>
         </ul>
       </section>
@@ -196,21 +265,28 @@ function RulesEN() {
       </section>
 
       <section>
-        <h3>Initial setup</h3>
+        <h3>Board layout</h3>
+        <BoardDiagram />
         <ul>
           <li>
-            <strong>Four stacks A, B, C, D</strong>: 9 face-down cards each with the
-            top card flipped face-up.
+            <strong>I, II, III, IV</strong>: descending foundations.
           </li>
           <li>
-            <strong>Four free cells A1, B1, C1, D1</strong>: one face-up card (taken
-            from the top of A, B, C, D respectively).
+            <strong>X</strong>: ascending foundation.
           </li>
           <li>
-            <strong>Foundations I, II, III, IV and X</strong>: empty at start.
+            <strong>A, B, C, D</strong>: initial stacks, 9 cards each with the top one
+            flipped face-up.
           </li>
           <li>
-            <strong>Stock</strong>: the remaining 64 cards, face-down.
+            <strong>A1, B1, C1, D1</strong>: free cells (B1 and D1 are horizontal).
+          </li>
+          <li>
+            <strong>1, 2, 3, 4</strong>: deal piles where stock cards land during a
+            round.
+          </li>
+          <li>
+            <strong>M</strong>: stock (the remaining 64 cards, face-down at start).
           </li>
         </ul>
       </section>

@@ -730,3 +730,123 @@ button {
 .instructions__cta {
   min-width: 160px;
 }
+
+/* ---------- Diagrama del tablero dentro de las instrucciones ----------
+   Reproduce a escala reducida la rejilla de Board.tsx: 6 columnas (col 3
+   con ancho card-h para las cartas horizontales), 4 filas, sub-stacks
+   B1+B y D+D1 en la columna central, pilas de reparto en su propia fila
+   centradas bajo X. El offset de translateX en .diagram__deal compensa
+   la asimetría del grid igual que en el tablero real. */
+
+.diagram {
+  --d-card-w: clamp(24px, 6.4vw, 36px);
+  --d-card-h: calc(var(--d-card-w) * 1.45);
+  --d-gap: 4px;
+  --d-substack-gap: 3px;
+  --d-deal-separator: 8px;
+  margin: 6px auto 14px;
+  padding: 10px;
+  background: #efeada;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.diagram__grid {
+  display: grid;
+  grid-template-columns:
+    var(--d-card-w) var(--d-card-w) var(--d-card-h)
+    var(--d-card-w) var(--d-card-w) var(--d-card-w);
+  grid-template-rows:
+    calc(2 * var(--d-card-w) + var(--d-substack-gap))
+    var(--d-card-h)
+    calc(2 * var(--d-card-w) + var(--d-substack-gap))
+    calc(var(--d-card-h) + var(--d-deal-separator));
+  grid-template-areas:
+    "fI  fII  subTop fIII fIV  mon"
+    "fA1 fA   fX     fC   fC1  ."
+    ".   .    subBot .    .    ."
+    "deal deal deal  deal deal deal";
+  gap: var(--d-gap);
+  justify-content: center;
+}
+
+/* Mapeo de cada slot a su grid-area por data-pos. Sólo aplica a los slots
+   que son hijos directos del grid (los slots dentro de los substacks usan
+   flex column, no grid-area). */
+.diagram__grid > .diagram__slot[data-pos="I"] { grid-area: fI; }
+.diagram__grid > .diagram__slot[data-pos="II"] { grid-area: fII; }
+.diagram__grid > .diagram__slot[data-pos="III"] { grid-area: fIII; }
+.diagram__grid > .diagram__slot[data-pos="IV"] { grid-area: fIV; }
+.diagram__grid > .diagram__slot[data-pos="M"] { grid-area: mon; }
+.diagram__grid > .diagram__slot[data-pos="A1"] { grid-area: fA1; }
+.diagram__grid > .diagram__slot[data-pos="A"] { grid-area: fA; }
+.diagram__grid > .diagram__slot[data-pos="X"] { grid-area: fX; }
+.diagram__grid > .diagram__slot[data-pos="C"] { grid-area: fC; }
+.diagram__grid > .diagram__slot[data-pos="C1"] { grid-area: fC1; }
+
+.diagram__substack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--d-substack-gap);
+}
+.diagram__substack--top { grid-area: subTop; }
+.diagram__substack--bot { grid-area: subBot; }
+
+.diagram__deal {
+  grid-area: deal;
+  display: flex;
+  gap: var(--d-gap);
+  justify-content: center;
+  align-items: end;
+  position: relative;
+  padding-top: var(--d-deal-separator);
+  /* Mismo desplazamiento que en el tablero real para alinear con la columna
+     de X (col 3 es card-h, no card-w). */
+  transform: translateX(calc(-0.5 * var(--d-card-w) - 0.5 * var(--d-gap)));
+}
+.diagram__deal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.diagram__slot {
+  width: var(--d-card-w);
+  height: var(--d-card-h);
+  border: 1.5px dashed #6f7572;
+  border-radius: 4px;
+  background: #fdfdfb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0b3d1f;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.diagram__slot--horizontal {
+  width: var(--d-card-h);
+  height: var(--d-card-w);
+}
+
+/* Las etiquetas de los slots horizontales se rotan 90° dentro del rectángulo,
+   tal y como aparecen en el PDF de reglas página 9. Usamos display:inline-block
+   en el span para que el transform respete el centrado del flexbox padre. */
+.diagram__slot--horizontal span {
+  display: inline-block;
+  transform: rotate(-90deg);
+}
+
+/* M (montón) destacado en amarillo claro como en el PDF. */
+.diagram__slot--emphasis {
+  background: #fff7d6;
+  border-color: #c9b860;
+}
