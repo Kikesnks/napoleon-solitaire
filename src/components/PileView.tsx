@@ -2,6 +2,26 @@ import type { CSSProperties } from "react";
 import type { Card, PositionId } from "../game";
 import { CardView } from "./CardView";
 
+/**
+ * Pilas que muestran el contador de cartas: las 4 pilas A/B/C/D (stock con
+ * cartas ocultas debajo), sus free cells A1/B1/C1/D1 (que pueden tener stacks
+ * ascendentes) y el MONTON (cartas pendientes de repartir). En las
+ * fundaciones (I-IV, X) y en las pilas de reparto 1-4 el contador no aporta
+ * información — siempre se ve la carta superior y el resto del comportamiento
+ * está implícito.
+ */
+const COUNT_VISIBLE: ReadonlySet<PositionId> = new Set([
+  "A",
+  "A1",
+  "B",
+  "B1",
+  "C",
+  "C1",
+  "D",
+  "D1",
+  "monton"
+]);
+
 interface Props {
   id: PositionId;
   cards: Card[];
@@ -68,7 +88,7 @@ export function PileView({
             {hideTop && <div className="pile__hidden-overlay" data-drop-target={id} />}
           </div>
         )}
-        {cards.length > 1 && (
+        {cards.length > 1 && COUNT_VISIBLE.has(id) && (
           <div className="pile__count" aria-label={`${cards.length} cartas`}>
             {cards.length}
           </div>

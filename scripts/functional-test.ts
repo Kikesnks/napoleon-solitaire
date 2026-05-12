@@ -195,6 +195,52 @@ async function main(): Promise<void> {
       fail(`ronda 1: esperaba 4 slots, hay ${dealCounts?.length ?? 0} (${dealCounts?.join(",") ?? "null"})`);
     }
 
+    // ---------- 5b. Contadores SÓLO en A/A1/B/B1/C/C1/D/D1 y monton ----------
+    const countsByPile = (await page.evaluate(
+      // eslint-disable-next-line no-new-func
+      new Function(
+        `
+        var ids = ["I","II","III","IV","X","A","A1","B","B1","C","C1","D","D1","pile1","pile2","pile3","pile4","monton"];
+        var out = {};
+        for (var i=0;i<ids.length;i++) {
+          var id = ids[i];
+          var el = document.querySelector('[data-pile-id="'+id+'"] .pile__count');
+          out[id] = el ? el.textContent : null;
+        }
+        return out;
+        `
+      ) as () => Record<string, string | null>
+    )) as Record<string, string | null>;
+    const WITH_COUNT = ["A", "A1", "B", "B1", "C", "C1", "D", "D1", "monton"];
+    const WITHOUT = ["I", "II", "III", "IV", "X", "pile1", "pile2", "pile3", "pile4"];
+    // A/B/C/D arrancan con 9 cartas → badge "9". A1/B1/C1/D1 con 1 carta →
+    // como sigue mostrando con length>1, NO aparece badge para ellas todavía.
+    // Monton con 60 (tras 1 deal) → badge "60".
+    let countsOk = true;
+    for (const id of WITH_COUNT) {
+      const hasBadge = countsByPile[id] !== null;
+      // Para A/B/C/D y monton SIEMPRE deben tener badge (length > 1).
+      // Para A1/B1/C1/D1 con 1 carta NO tienen badge (length === 1).
+      const expected = id.endsWith("1") ? false : true;
+      if (hasBadge !== expected) {
+        console.log(
+          `  FAIL contador en ${id}: hasBadge=${hasBadge} expected=${expected} (text="${countsByPile[id]}")`
+        );
+        countsOk = false;
+      }
+    }
+    for (const id of WITHOUT) {
+      if (countsByPile[id] !== null) {
+        console.log(`  FAIL ${id} muestra contador "${countsByPile[id]}" (no debe)`);
+        countsOk = false;
+      }
+    }
+    if (countsOk) {
+      ok(`contadores SÓLO en A/B/C/D/monton (no en fundaciones ni pilas de reparto)`);
+    } else {
+      fail(`distribución de contadores incorrecta`);
+    }
+
     // ---------- 6. Botón 📖 Reglas reabre la pantalla de instrucciones ----------
     await page.click('.hud__btn--icon');
     await page.waitForTimeout(100);
