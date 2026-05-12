@@ -39,7 +39,7 @@ export function Board({ state, onMove, onAutoPromote, onDeal }: Props) {
       if (!isValidSource(from)) return false;
       const card = topOf(state, from);
       if (!card || !card.faceUp) return false;
-      return canPlace(card, to, topOf(state, to));
+      return canPlace(card, to, topOf(state, to), from);
     },
     [state]
   );
@@ -61,6 +61,18 @@ export function Board({ state, onMove, onAutoPromote, onDeal }: Props) {
 
   return (
     <div className="board">
+      {/* Fila 0 (arriba del todo): 8 slots de fundaciones completadas. */}
+      <div className="board__completed" aria-label="Fundaciones completadas">
+        {Array.from({ length: 8 }, (_, i) => {
+          const card = state.completed[i];
+          return (
+            <div className="completed-slot" key={i} data-filled={card ? "yes" : "no"}>
+              {card ? <CardView card={card} inert /> : null}
+            </div>
+          );
+        })}
+      </div>
+
       {/* Fila 1: I  II  [substack-top: B1+B]  III  IV  M */}
       <PileView
         id="I"

@@ -68,7 +68,23 @@
 
   --substack-gap: 4px;
   --deal-separator: 14px; /* espacio (con la línea fina) entre D1 y las pilas de reparto */
-  --max-w-from-h: calc((var(--avail-h) - 3 * var(--gap) - 2 * var(--substack-gap) - var(--deal-separator)) / 6.9);
+  /* Escala de la fila "completados" (arriba del todo, 8 slots) respecto al tamaño base.
+     0.65 deja 8 mini-cartas en el ancho del tablero principal sin sobresalir. */
+  --completed-scale: 0.65;
+  --completed-card-w: calc(var(--card-w) * var(--completed-scale));
+  --completed-card-h: calc(var(--card-h) * var(--completed-scale));
+  /* Altura total ocupada por el grid:
+       completed-card-h + gap                       fila 0 (completados)
+       + 2·card-w + substack-gap                    fila 1 (foundations + B1+B)
+       + gap + card-h                               fila 2 (free cells)
+       + gap + 2·card-w + substack-gap              fila 3 (D + D1)
+       + gap + card-h + deal-separator              fila 4 (pilas de reparto)
+       = 4·card-w + 2·card-h + 0.94·card-w + 4·gap + 2·sg + sep
+       = 7.84·card-w + 4·gap + 2·sg + sep
+  */
+  --max-w-from-h: calc(
+    (var(--avail-h) - 4 * var(--gap) - 2 * var(--substack-gap) - var(--deal-separator)) / 7.84
+  );
   --max-w-from-w: calc((var(--avail-w) - 5 * var(--gap)) / 6.45);
 
   /* Fallback estático para navegadores sin clamp/min anidado (iOS < 13.4
@@ -226,11 +242,13 @@ button {
   grid-template-columns:
     var(--card-w) var(--card-w) var(--card-h) var(--card-w) var(--card-w) var(--card-w);
   grid-template-rows:
+    var(--completed-card-h)
     calc(2 * var(--card-w) + var(--substack-gap))
     var(--card-h)
     calc(2 * var(--card-w) + var(--substack-gap))
     calc(var(--card-h) + var(--deal-separator));
   grid-template-areas:
+    "completed completed completed completed completed completed"
     "fI  fII  subTop fIII fIV  mon"
     "fA1 fA   fX     fC   fC1  ."
     ".   .    subBot .    .    ."
@@ -238,6 +256,45 @@ button {
   gap: var(--gap);
   align-content: center;
   justify-content: center;
+}
+
+/* Fila superior: 8 slots para las fundaciones completadas (objetivo del juego).
+   Cada slot mide completed-card-w × completed-card-h (0.65× una carta normal).
+   Centrados horizontalmente sobre el ancho total del tablero. */
+.board__completed {
+  grid-area: completed;
+  display: flex;
+  gap: var(--gap);
+  justify-content: center;
+  align-items: center;
+}
+
+.completed-slot {
+  width: var(--completed-card-w);
+  height: var(--completed-card-h);
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--slot-border);
+  background: var(--slot);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.completed-slot[data-filled="yes"] {
+  border-style: solid;
+  border-color: rgba(255, 209, 102, 0.65);
+  box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.35);
+  background: transparent;
+}
+
+/* La carta dentro del slot completado se redimensiona al tamaño del slot. */
+.completed-slot .card {
+  width: var(--completed-card-w);
+  height: var(--completed-card-h);
+  cursor: default;
+  transition: none;
 }
 
 .pile[data-pile-id="I"] { grid-area: fI; }
@@ -440,10 +497,12 @@ button {
   background: var(--card-bg);
   box-shadow: var(--shadow);
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 4px 5px;
+  /* La carta tiene 3 zonas verticales bien separadas: rango arriba a la
+     izquierda (top), palo grande en el centro (middle), rango abajo a la
+     derecha rotado 180° (bottom). Sin solapamientos. */
+  display: grid;
+  grid-template-rows: 28% 44% 28%;
+  padding: 3px 5px;
   cursor: grab;
   user-select: none;
   transition: transform 0.08s ease;
@@ -490,36 +549,35 @@ button {
   transform: scale(1.05) rotate(-1deg);
 }
 
-.card__corner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.card__rank {
+  font-size: calc(var(--card-w) * 0.32);
+  font-weight: 800;
   line-height: 1;
 }
 
-.card__corner--br {
-  align-self: flex-end;
+.card__rank--tl {
+  justify-self: start;
+  align-self: start;
+}
+
+.card__rank--br {
+  justify-self: end;
+  align-self: end;
   transform: rotate(180deg);
 }
 
-.card__rank {
-  font-size: calc(var(--card-w) * 0.28);
-  font-weight: 800;
-}
-
-.card__suit {
-  font-size: calc(var(--card-w) * 0.24);
-}
-
 .card__center {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--card-w) * 0.55);
   pointer-events: none;
-  opacity: 1;
+}
+
+.suit {
+  /* Tamaño del icono SVG: ocupa la franja central de la carta. */
+  width: calc(var(--card-w) * 0.55);
+  height: calc(var(--card-w) * 0.55);
+  display: block;
 }
 
 /* ---------- 8. Overlay fin de partida ---------- */

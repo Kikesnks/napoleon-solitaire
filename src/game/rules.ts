@@ -70,21 +70,35 @@ function fitsAscFoundation(card: Card, top: Card | null): boolean {
 
 /**
  * Free cells A1/B1/C1/D1:
- *  - Si están vacías: aceptan cualquier carta boca arriba.
- *  - Si tienen cartas: aceptan otra del MISMO palo y color en orden ASCENDENTE
- *    (rango = top.rank + 1). Esto permite construir secuencias ascendentes
- *    análogas a la fundación X que luego pueden encadenarse de golpe a una
- *    fundación descendente cuando el jugador lo decida.
+ *  - Si están VACÍAS: sólo aceptan una carta procedente de su stock
+ *    correspondiente (A1 ← A, B1 ← B, C1 ← C, D1 ← D). Otras fuentes no son
+ *    válidas. Esto refleja la regla original del PDF: A1 es el "puesto" de A.
+ *  - Si tienen cartas: aceptan otra del MISMO palo y color en orden
+ *    ASCENDENTE (rango = top.rank + 1), independientemente del origen. Esto
+ *    permite construir secuencias ascendentes en la free cell.
  */
-function fitsFreeCell(card: Card, top: Card | null): boolean {
-  if (top === null) return true;
-  return card.suit === top.suit && card.rank === top.rank + 1;
+function fitsFreeCell(
+  card: Card,
+  top: Card | null,
+  dest: FreeCellId,
+  from: PositionId | undefined
+): boolean {
+  if (top !== null) {
+    return card.suit === top.suit && card.rank === top.rank + 1;
+  }
+  // Vacía: sólo se rellena desde la pila A/B/C/D asociada.
+  return from !== undefined && STOCK_OF_FREECELL[dest] === from;
 }
 
-export function canPlace(card: Card, dest: PositionId, destTop: Card | null): boolean {
+export function canPlace(
+  card: Card,
+  dest: PositionId,
+  destTop: Card | null,
+  from?: PositionId
+): boolean {
   if (isDescFoundation(dest)) return fitsDescFoundation(card, destTop);
   if (dest === "X") return fitsAscFoundation(card, destTop);
-  if (isFreeCell(dest)) return fitsFreeCell(card, destTop);
+  if (isFreeCell(dest)) return fitsFreeCell(card, destTop, dest, from);
   return false;
 }
 
@@ -96,7 +110,7 @@ export function legalDestinations(state: CoreState, from: PositionId): PositionI
   const dests: PositionId[] = [];
   for (const dest of [...FOUNDATION_DESC, "X" as PositionId, ...FREE_CELLS]) {
     if (dest === from) continue;
-    if (canPlace(card, dest, topOf(state, dest))) dests.push(dest);
+    if (canPlace(card, dest, topOf(state, dest), from)) dests.push(dest);
   }
   return dests;
 }
@@ -124,7 +138,7 @@ export function applyMove(state: CoreState, from: PositionId, to: PositionId): M
   const card = topOf(state, from);
   if (!card) throw new Error(`Movimiento inválido: ${from} está vacía`);
   if (!card.faceUp) throw new Error(`Movimiento inválido: carta boca abajo`);
-  if (!canPlace(card, to, topOf(state, to))) {
+  if (!canPlace(card, to, topOf(state, to), from)) {
     throw new Error(`Movimiento inválido: ${from} → ${to}`);
   }
 
@@ -146,12 +160,16 @@ export function applyMove(state: CoreState, from: PositionId, to: PositionId): M
   next.positions[to].push(card);
 
   let cleared = false;
-  // Detección de fundación completa.
+  // Detección de fundación completa: el As cierra una descendente, el Rey
+  // cierra la ascendente X. Guardamos la carta cerradora en `completed` para
+  // que la UI la muestre en la fila de objetivos completados (8 en total).
   if (isDescFoundation(to) && card.rank === 1) {
     next.positions[to] = [];
+    next.completed = [...next.completed, { ...card }];
     cleared = true;
   } else if (to === "X" && card.rank === 13) {
     next.positions[to] = [];
+    next.completed = [...next.completed, { ...card }];
     cleared = true;
   }
 

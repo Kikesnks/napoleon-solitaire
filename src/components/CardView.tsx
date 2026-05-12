@@ -1,12 +1,6 @@
 import { memo } from "react";
 import type { Card } from "../game";
-
-const SUIT_GLYPH: Record<Card["suit"], string> = {
-  spades: "♠",
-  hearts: "♥",
-  diamonds: "♦",
-  clubs: "♣"
-};
+import { SuitIcon } from "./SuitIcon";
 
 const RANK_LABEL: Record<number, string> = {
   1: "A",
@@ -17,10 +11,6 @@ const RANK_LABEL: Record<number, string> = {
 
 export function rankLabel(card: Card): string {
   return RANK_LABEL[card.rank] ?? String(card.rank);
-}
-
-export function suitGlyph(card: Card): string {
-  return SUIT_GLYPH[card.suit];
 }
 
 export function isRedSuit(suit: Card["suit"]): boolean {
@@ -76,8 +66,13 @@ export const CardView = memo(function CardView({
   }
 
   const rank = rankLabel(card);
-  const glyph = suitGlyph(card);
 
+  // Diseño de la carta:
+  //  - Rango en la esquina superior izquierda (orientación normal)
+  //  - Rango en la esquina inferior derecha (rotado 180°)
+  //  - Un único símbolo de palo GRANDE en el centro
+  // Las esquinas y el centro están en franjas distintas (top / middle / bottom)
+  // para que el palo y el número no se solapen.
   return (
     <div
       className={classes.join(" ")}
@@ -87,17 +82,11 @@ export const CardView = memo(function CardView({
       role={inert ? undefined : "button"}
       aria-label={`${rank} de ${card.suit}`}
     >
-      <div className="card__corner card__corner--tl">
-        <span className="card__rank">{rank}</span>
-        <span className="card__suit">{glyph}</span>
-      </div>
-      <div className="card__center" aria-hidden>
-        {glyph}
-      </div>
-      <div className="card__corner card__corner--br">
-        <span className="card__rank">{rank}</span>
-        <span className="card__suit">{glyph}</span>
-      </div>
+      <span className="card__rank card__rank--tl">{rank}</span>
+      <span className="card__center" aria-hidden>
+        <SuitIcon suit={card.suit} />
+      </span>
+      <span className="card__rank card__rank--br">{rank}</span>
     </div>
   );
 });

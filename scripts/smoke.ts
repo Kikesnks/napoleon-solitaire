@@ -92,12 +92,18 @@ check("Q de spades sobre K de hearts en I NO (palo distinto)", !canPlace(q("spad
 check("A a X vacía OK", canPlace(a("hearts"), "X", null));
 check("K a X vacía NO", !canPlace(k("hearts"), "X", null));
 check("2 de hearts sobre A de hearts en X OK", canPlace(two("hearts"), "X", a("hearts")));
-check("A a free cell vacía OK", canPlace(a("hearts"), "A1", null));
-check("K sobre free cell vacía OK (cualquier rango)", canPlace(k("hearts"), "A1", null));
-check("2 hearts sobre A hearts en A1 OK (asc, mismo palo)", canPlace(two("hearts"), "A1", a("hearts")));
-check("2 spades sobre A hearts en A1 NO (palo distinto)", !canPlace(two("spades"), "A1", a("hearts")));
-check("3 hearts sobre A hearts en A1 NO (rango salta)", !canPlace({ ...two("hearts"), rank: 3, id: "h-3-skip" } as Card, "A1", a("hearts")));
-check("A hearts sobre 2 hearts en A1 NO (descendente no vale)", !canPlace(a("hearts"), "A1", two("hearts")));
+// Free cells vacías SÓLO aceptan cartas de su pila A/B/C/D asociada.
+check("A→A1 vacía OK (mismo stock)", canPlace(a("hearts"), "A1", null, "A"));
+check("B→A1 vacía NO (stock distinto)", !canPlace(a("hearts"), "A1", null, "B"));
+check("MONTON→A1 vacía NO", !canPlace(a("hearts"), "A1", null, "monton"));
+check("pile1→C1 vacía NO", !canPlace(k("hearts"), "C1", null, "pile1"));
+check("X→D1 vacía NO", !canPlace(k("hearts"), "D1", null, "X"));
+check("D→D1 vacía OK", canPlace(k("hearts"), "D1", null, "D"));
+// Free cells ocupadas aceptan ascendente del mismo palo independiente del origen.
+check("2 hearts sobre A hearts en A1 OK (asc, cualquier origen)", canPlace(two("hearts"), "A1", a("hearts"), "monton"));
+check("2 spades sobre A hearts en A1 NO (palo distinto)", !canPlace(two("spades"), "A1", a("hearts"), "monton"));
+check("3 hearts sobre A hearts en A1 NO (rango salta)", !canPlace({ ...two("hearts"), rank: 3, id: "h-3-skip" } as Card, "A1", a("hearts"), "monton"));
+check("A hearts sobre 2 hearts en A1 NO (descendente no vale)", !canPlace(a("hearts"), "A1", two("hearts"), "monton"));
 
 // ============================================================
 section("free cell ascendente: stack 5♥-6♥-7♥ y encadenado a fundación");
@@ -190,6 +196,8 @@ const cleared = applyMove(toClear, "A1", "I");
 check("I queda vacía tras As", cleared.state.positions.I.length === 0);
 check("record cleared = true", cleared.record.cleared === true);
 check("score +10 (carta) +50 (clear) = +60", cleared.state.score === 60);
+check("completed sube de 0 a 1 carta", cleared.state.completed.length === 1);
+check("completed[0] es el As de hearts", cleared.state.completed[0].rank === 1 && cleared.state.completed[0].suit === "hearts");
 
 // ============================================================
 section("X completa al colocar K (ascendente)");
@@ -206,6 +214,8 @@ toClearX = {
 const clearedX = applyMove(toClearX, "A1", "X");
 check("X queda vacía tras K en ascendente", clearedX.state.positions.X.length === 0);
 check("clear flag", clearedX.record.cleared === true);
+check("completed sube tras cerrar X", clearedX.state.completed.length === 1);
+check("completed[0] es el K (cerrador de X)", clearedX.state.completed[0].rank === 13);
 
 // ============================================================
 section("dealFromMonton: ronda 1 reparte 4");

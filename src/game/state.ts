@@ -68,7 +68,8 @@ export function createInitialState(options: InitOptions = {}): GameState {
     score: 0,
     moves: 0,
     status: "playing",
-    lastMove: null
+    lastMove: null,
+    completed: []
   };
 
   return {
@@ -99,6 +100,7 @@ export function snapshot(state: CoreState): CoreState {
     score: state.score,
     moves: state.moves,
     status: state.status,
-    lastMove: state.lastMove ? { ...state.lastMove } : null
+    lastMove: state.lastMove ? { ...state.lastMove } : null,
+    completed: state.completed.map((c) => ({ ...c }))
   };
 }

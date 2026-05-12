@@ -58,6 +58,13 @@ export interface CoreState {
   status: Status;
   /** Última jugada — usado por la UI para resaltados. */
   lastMove: MoveRecord | null;
+  /**
+   * Cartas representativas de cada secuencia ya completada y retirada del
+   * tablero. Cuando una fundación I/II/III/IV se vacía por colocar el As,
+   * el As se guarda aquí. Cuando X se vacía por colocar el K, el K se guarda.
+   * La UI lo pinta como una fila de 8 slots arriba del todo (objetivo del juego).
+   */
+  completed: Card[];
 }
 
 export interface GameState extends CoreState {
