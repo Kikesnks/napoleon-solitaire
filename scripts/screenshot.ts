@@ -39,6 +39,10 @@ interface VP {
   showInstructions?: boolean;
   /** Si tras cerrar instrucciones queremos cambiar a EN antes. */
   langEN?: boolean;
+  /** Captura a los N ms tras cerrar instrucciones (para ver el reparto). */
+  midDealMs?: number;
+  /** Inyecta un estado ganado para fotografiar el confetti. */
+  forceWin?: boolean;
 }
 
 const SHOTS: VP[] = [
@@ -65,7 +69,9 @@ const SHOTS: VP[] = [
     deals: 1,
     colorScheme: "dark"
   },
-  { name: "laptop-round-2-3-slots", width: 1366, height: 768, deals: 17 }
+  { name: "laptop-round-2-3-slots", width: 1366, height: 768, deals: 17 },
+  // Reparto inicial a mitad de animación.
+  { name: "laptop-mid-deal", width: 1366, height: 768, deals: 0, midDealMs: 550 }
 ];
 
 async function main(): Promise<void> {
@@ -89,7 +95,9 @@ async function main(): Promise<void> {
         const cta = await page.$(".instructions__cta");
         if (cta) {
           await cta.click();
-          await page.waitForTimeout(80);
+          // Para capturar mid-deal esperamos exactamente lo que pida vp;
+          // si no, esperamos lo suficiente para que la animación termine.
+          await page.waitForTimeout(vp.midDealMs ?? 1500);
         }
       }
       for (let i = 0; i < vp.deals; i++) {

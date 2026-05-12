@@ -86,6 +86,32 @@ async function main(): Promise<void> {
       fail("dismiss: el modal sigue visible tras pulsar 'Empezar a jugar'");
     }
 
+    // ---------- 0b. Animación de reparto inicial ----------
+    // Tras cerrar las instrucciones, .board--dealing debe estar presente
+    // durante ~1.4s y luego desaparecer.
+    const hasDealing = await page.$(".board.board--dealing");
+    if (hasDealing) {
+      ok("post-dismiss: .board--dealing aplicada al iniciar la partida");
+    } else {
+      fail("post-dismiss: .board--dealing NO se aplica");
+    }
+    // Esperamos un poco MENOS que la duración para confirmar que sigue activa,
+    // luego un poco MÁS para confirmar que se quita.
+    await page.waitForTimeout(700);
+    const stillDealing = await page.$(".board.board--dealing");
+    if (stillDealing) {
+      ok("mid-anim: .board--dealing sigue activa a los 700ms");
+    } else {
+      fail("mid-anim: .board--dealing se quitó demasiado pronto");
+    }
+    await page.waitForTimeout(900);
+    const dealingGone = await page.$(".board.board--dealing");
+    if (!dealingGone) {
+      ok("post-anim: .board--dealing eliminada tras la duración (~1.4s)");
+    } else {
+      fail("post-anim: .board--dealing sigue tras 1.6s (debería estar fuera)");
+    }
+
     // ---------- 1. Estado inicial: top del montón boca abajo ----------
     const cardClassesAt = (id: string) =>
       // eslint-disable-next-line no-new-func

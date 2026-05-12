@@ -908,3 +908,109 @@ button {
   background: #fff7d6;
   border-color: #c9b860;
 }
+
+/* ============================================================
+   10. Animación de reparto inicial (.board--dealing)
+   Las 9 pilas iniciales (A, A1, B, B1, C, C1, D, D1, monton) caen desde
+   arriba a la izquierda escalonadas, ~520ms cada una, stagger 80ms.
+   ============================================================ */
+
+@keyframes deal-in {
+  from {
+    transform: translate(-50%, -180%) rotate(-30deg) scale(0.85);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(0, 0) rotate(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.board--dealing .pile__card .card,
+.board--dealing .pile__card .pile__hidden-overlay {
+  animation: deal-in 520ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+.board--dealing [data-pile-id="A"] .card  { animation-delay: 0ms; }
+.board--dealing [data-pile-id="A1"] .card { animation-delay: 80ms; }
+.board--dealing [data-pile-id="B"] .card  { animation-delay: 160ms; }
+.board--dealing [data-pile-id="B1"] .card { animation-delay: 240ms; }
+.board--dealing [data-pile-id="C"] .card  { animation-delay: 320ms; }
+.board--dealing [data-pile-id="C1"] .card { animation-delay: 400ms; }
+.board--dealing [data-pile-id="D"] .card  { animation-delay: 480ms; }
+.board--dealing [data-pile-id="D1"] .card { animation-delay: 560ms; }
+.board--dealing [data-pile-id="monton"] .card { animation-delay: 640ms; }
+
+/* ============================================================
+   11. Celebración al ganar: confetti + fuegos artificiales
+   El componente <Confetti /> se monta cuando status === "won".
+   Vive bajo el modal (z-index 990 < 999) y por encima del tablero.
+   ============================================================ */
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 990;
+}
+
+.confetti__p {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
+.confetti__p--fall {
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(var(--rot, 180deg) * 0.1), 110vh) rotate(var(--rot, 540deg));
+    opacity: 0;
+  }
+}
+
+.confetti__p--burst {
+  border-radius: 50%;
+  animation: confetti-burst ease-out forwards;
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  35% {
+    transform: translate(calc(var(--burst-x) * 0.45), calc(var(--burst-y) * 0.45)) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--burst-x), var(--burst-y)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Accesibilidad: respeto a prefers-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .board--dealing .pile__card .card,
+  .board--dealing .pile__card .pile__hidden-overlay {
+    animation: none;
+  }
+  .confetti {
+    display: none;
+  }
+}

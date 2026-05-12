@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Board } from "./components/Board";
+import { Confetti } from "./components/Confetti";
 import { GameOverlay } from "./components/GameOverlay";
 import { HUD } from "./components/HUD";
 import { Instructions } from "./components/Instructions";
 import { useGameEngine } from "./hooks/useGameEngine";
 import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
+
+/** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
+const DEAL_ANIMATION_MS = 1400;
 
 export default function App() {
   const engine = useGameEngine();
@@ -24,6 +28,21 @@ export default function App() {
   useEffect(() => {
     if (firstRun) setShowRules(true);
   }, [firstRun]);
+
+  /**
+   * Reparto inicial animado: cuando empieza una partida (state.startedAt cambia)
+   * y el modal de reglas no está visible, activamos un flag durante 1.4s. El
+   * Board aplica la clase `board--dealing` y las cartas vuelan a su posición
+   * con stagger CSS. Si el modal está abierto al cargar, esperamos a que el
+   * jugador lo cierre antes de animar.
+   */
+  const [dealing, setDealing] = useState<boolean>(false);
+  useEffect(() => {
+    if (showRules) return;
+    setDealing(true);
+    const t = window.setTimeout(() => setDealing(false), DEAL_ANIMATION_MS);
+    return () => window.clearTimeout(t);
+  }, [state.startedAt, showRules]);
 
   const elapsedMs = useTimer(state.startedAt, state.status === "playing" && !showRules);
 
@@ -74,11 +93,13 @@ export default function App() {
       <main className="app__main">
         <Board
           state={state}
+          dealing={dealing}
           onMove={engine.move}
           onAutoPromote={engine.autoPromote}
           onDeal={engine.deal}
         />
       </main>
+      {state.status === "won" && <Confetti />}
       <GameOverlay
         lang={lang}
         status={state.status}

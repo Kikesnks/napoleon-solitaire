@@ -13,6 +13,9 @@ import { PileView } from "./PileView";
 
 interface Props {
   state: GameState;
+  /** Cuando es true se aplica `.board--dealing` y las cartas iniciales
+   *  entran con stagger CSS — animación de reparto al empezar partida. */
+  dealing?: boolean;
   onMove(from: PositionId, to: PositionId): void;
   onAutoPromote(from: PositionId): void;
   onDeal(): void;
@@ -32,7 +35,7 @@ interface Props {
  * apiladas equivalgan en altura a una vertical). El layout entero usa CSS Grid
  * con áreas con nombre — ver `index.css` sección "Tablero - layout en cruz".
  */
-export function Board({ state, onMove, onAutoPromote, onDeal }: Props) {
+export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }: Props) {
   const isLegalTarget = useCallback(
     (from: PositionId, to: PositionId) => {
       if (from === to) return false;
@@ -60,7 +63,7 @@ export function Board({ state, onMove, onAutoPromote, onDeal }: Props) {
   const isHidden = (id: PositionId) => drag?.from === id;
 
   return (
-    <div className="board">
+    <div className={`board ${dealing ? "board--dealing" : ""}`}>
       {/* Fila 0 (arriba del todo): 8 slots de fundaciones completadas. */}
       <div className="board__completed" aria-label="Fundaciones completadas">
         {Array.from({ length: 8 }, (_, i) => {
