@@ -224,7 +224,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
             cards={pileFor(id)}
             label={id.replace("pile", "")}
             onPointerDownTop={(e) => beginDrag(e, id)}
-            onClickTop={() => onAutoPromote(id)}
             hideTop={isHidden(id)}
           />
         ))}

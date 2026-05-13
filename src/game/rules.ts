@@ -8,6 +8,7 @@ import {
   STOCK_OF_FREECELL,
   type Card,
   type CoreState,
+  type DealPileId,
   type FoundationDescId,
   type FreeCellId,
   type GameState,
@@ -363,6 +364,9 @@ function scoreForMove(from: PositionId, to: PositionId, cleared: boolean): numbe
 export function autoPromote(state: CoreState, from: PositionId): { state: CoreState; moved: boolean } {
   const card = topOf(state, from);
   if (!card || !card.faceUp || !isValidSource(from)) return { state, moved: false };
+  // Las pilas de reparto 1-4 sólo se mueven por arrastre explícito; el clic
+  // no auto-promueve (evita promociones accidentales en pantalla táctil).
+  if (DEAL_PILES.includes(from as DealPileId)) return { state, moved: false };
   const isStock = STOCKS.includes(from as StockId);
   const candidates: PositionId[] = [...FOUNDATION_DESC, "X"];
   for (const dest of candidates) {

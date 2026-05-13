@@ -36,9 +36,13 @@ export default function App() {
    * "gameover" → el jugador pulsó "Jugar otra" (no puede cancelar).
    * "firstrun" → primer arranque, se muestra tras cerrar las instrucciones.
    */
+  // En cada carga (F5 o primera vez) se pide al jugador el modo de palos.
+  // Si es el primer arranque, las instrucciones aparecen primero y el selector
+  // se activa al cerrarlas. Si NO es el primer arranque, el selector aparece
+  // directamente al cargar la página.
   const [pendingSuitSource, setPendingSuitSource] = useState<
     "hud" | "gameover" | "firstrun" | null
-  >(null);
+  >(() => (firstRun ? null : "firstrun"));
 
   // ── Liga de Campeones ─────────────────────────────────────────────────────
   type LbPhase =
@@ -96,11 +100,11 @@ export default function App() {
    */
   const [dealing, setDealing] = useState<boolean>(false);
   useEffect(() => {
-    if (showRules) return;
+    if (showRules || pendingSuitSource !== null) return;
     setDealing(true);
     const t = window.setTimeout(() => setDealing(false), DEAL_ANIMATION_MS);
     return () => window.clearTimeout(t);
-  }, [state.startedAt, showRules]);
+  }, [state.startedAt, showRules, pendingSuitSource]);
 
   const elapsedMs = useTimer(state.startedAt, state.status === "playing" && !showRules);
 
