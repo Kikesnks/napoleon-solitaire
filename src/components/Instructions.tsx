@@ -66,14 +66,15 @@ function Slot({
 interface Props {
   lang: Lang;
   onLangChange(next: Lang): void;
-  /** Cierra la pantalla. Cuando es la primera vez, además marca "visto". */
+  /** Cierra la pantalla. La primera vez además marca "visto" en localStorage. */
   onDismiss(): void;
-  /** Si el jugador entra por primera vez, mostramos "Empezar a jugar" en el
-   *  botón principal en vez de "Cerrar". */
-  firstRun: boolean;
+  /** Si es true, el cierre conduce a empezar partida (selector de palos);
+   *  mostramos "Empezar a jugar". Si es false (consulta desde el HUD durante
+   *  la partida), mostramos "Cerrar". */
+  showPlayButton: boolean;
 }
 
-export function Instructions({ lang, onLangChange, onDismiss, firstRun }: Props) {
+export function Instructions({ lang, onLangChange, onDismiss, showPlayButton }: Props) {
   const t = STRINGS[lang];
   return (
     <div className="instructions" role="dialog" aria-modal="true" aria-labelledby="rules-title">
@@ -112,7 +113,7 @@ export function Instructions({ lang, onLangChange, onDismiss, firstRun }: Props)
             className="hud__btn hud__btn--primary instructions__cta"
             onClick={onDismiss}
           >
-            {firstRun ? t.play : t.close}
+            {showPlayButton ? t.play : t.close}
           </button>
         </footer>
       </div>

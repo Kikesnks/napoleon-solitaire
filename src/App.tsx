@@ -24,25 +24,30 @@ export default function App() {
   const { firstRun, markSeen } = useFirstRun();
 
   /**
-   * showRules controla la visibilidad del modal de instrucciones.
-   * - Al primer arranque (firstRun) lo abrimos automáticamente.
-   * - Desde el HUD, el botón "📖 Reglas" lo reabre cuando quieras.
+   * showRules: SIEMPRE true al cargar la página (también en F5, no solo en
+   * el primer arranque). Desde el HUD también se puede reabrir.
    */
-  const [showRules, setShowRules] = useState<boolean>(firstRun);
+  const [showRules, setShowRules] = useState<boolean>(true);
+
+  /**
+   * rulesOnLoad: true mientras las reglas que se ven forman parte del flujo
+   * de carga inicial. Pasa a false al cerrarlas por primera vez. Determina
+   * la etiqueta del botón ("Empezar a jugar" vs "Cerrar") y si el siguiente
+   * paso tras cerrarlas es el selector de palos.
+   */
+  const [rulesOnLoad, setRulesOnLoad] = useState<boolean>(true);
 
   /**
    * pendingSuitSource: cuando está establecido, muestra el selector de palos.
    * "hud"      → el jugador pulsó "Nueva" (puede cancelar y seguir la partida).
    * "gameover" → el jugador pulsó "Jugar otra" (no puede cancelar).
-   * "firstrun" → primer arranque, se muestra tras cerrar las instrucciones.
+   * "firstrun" → flujo de carga inicial: se muestra tras cerrar las reglas.
+   * Se inicializa siempre a "firstrun" — el render del selector está
+   * condicionado a !showRules para que el flujo sea secuencial (reglas → palos).
    */
-  // En cada carga (F5 o primera vez) se pide al jugador el modo de palos.
-  // Si es el primer arranque, las instrucciones aparecen primero y el selector
-  // se activa al cerrarlas. Si NO es el primer arranque, el selector aparece
-  // directamente al cargar la página.
   const [pendingSuitSource, setPendingSuitSource] = useState<
     "hud" | "gameover" | "firstrun" | null
-  >(() => (firstRun ? null : "firstrun"));
+  >("firstrun");
 
   // ── Liga de Campeones ─────────────────────────────────────────────────────
   type LbPhase =
@@ -86,10 +91,6 @@ export default function App() {
 
   const handleLbAccept = () => setLbPhase({ step: "idle" });
 
-  // Si el flag firstRun cambia (otro tab marca como visto), reflejarlo aquí.
-  useEffect(() => {
-    if (firstRun) setShowRules(true);
-  }, [firstRun]);
 
   /**
    * Reparto inicial animado: cuando empieza una partida (state.startedAt cambia)
@@ -146,13 +147,12 @@ export default function App() {
   }, [engine, showRules, pendingSuitSource, lbPhase.step, showLbViewer]);
 
   const dismissRules = () => {
-    if (firstRun) {
-      markSeen();
-      setShowRules(false);
-      setPendingSuitSource("firstrun");
-    } else {
-      setShowRules(false);
-    }
+    if (firstRun) markSeen();
+    setShowRules(false);
+    // Al cerrar las reglas mostradas en la carga inicial, pendingSuitSource
+    // ya está en "firstrun" y el selector aparecerá automáticamente. En las
+    // aperturas posteriores desde el HUD, rulesOnLoad es false y no hacemos nada.
+    setRulesOnLoad(false);
   };
 
   const handleSuitSelect = (mode: SuitMode) => {
@@ -200,10 +200,10 @@ export default function App() {
           lang={lang}
           onLangChange={setLang}
           onDismiss={dismissRules}
-          firstRun={firstRun}
+          showPlayButton={rulesOnLoad}
         />
       )}
-      {pendingSuitSource !== null && (
+      {!showRules && pendingSuitSource !== null && (
         <SuitSelectDialog
           lang={lang}
           canCancel={pendingSuitSource === "hud"}

@@ -51,12 +51,11 @@ export function HUD({
         </button>
         <button
           type="button"
-          className="hud__btn hud__btn--icon"
+          className="hud__btn"
           onClick={onShowRules}
           aria-label={t.rules}
-          title={t.rules}
         >
-          📖
+          {t.rules}
         </button>
         <button
           type="button"
