@@ -1016,7 +1016,380 @@ button {
 }
 
 /* ============================================================
-   12. Selector de número de palos (SuitSelectDialog)
+   12. Liga de Campeones — tabla compartida
+   .lb__table se usa tanto en LeaderboardDialog (fondo oscuro)
+   como en LeaderboardViewer (fondo claro/dorado).
+   ============================================================ */
+
+/* --- Tabla --- */
+.lb__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.lb__table th {
+  padding: 5px 8px;
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+}
+
+.lb__table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+
+.lb__table tr:last-child td {
+  border-bottom: none;
+}
+
+.lb__col-r {
+  text-align: right;
+}
+
+.lb__rank {
+  width: 28px;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.lb__name {
+  font-weight: 600;
+}
+
+.lb__score-cell {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+
+.lb__date {
+  font-size: 11px;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.lb__suits {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* Fila resaltada (nueva entrada) */
+.lb__row--new td {
+  background: rgba(255, 209, 102, 0.14);
+}
+
+.lb__row--new .lb__name {
+  color: var(--primary);
+}
+
+.lb__empty {
+  text-align: center;
+  opacity: 0.5;
+  padding: 24px 0;
+  margin: 0;
+  font-size: 13px;
+}
+
+/* --- NameEntryDialog --- */
+.lb-entry {
+  z-index: 1004;
+}
+
+.lb-entry__panel {
+  width: min(380px, 100%);
+  text-align: center;
+}
+
+.lb-entry__panel--won {
+  border-color: #c8a000;
+  box-shadow: 0 20px 60px rgba(200, 160, 0, 0.3);
+  background: #0e0b00;
+}
+
+.lb-entry__icon {
+  font-size: 52px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.lb-entry__title {
+  margin: 0 0 10px;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.lb-entry__panel--won .lb-entry__title {
+  color: #ffd166;
+}
+
+.lb-entry__score-line {
+  margin: 0 0 6px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.lb-entry__score-value {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-entry__prompt {
+  margin: 0 0 14px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.lb-entry__input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--hud-fg);
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 12px;
+  touch-action: auto; /* teclado en móvil */
+  box-sizing: border-box;
+}
+
+.lb-entry__input:focus {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lb-entry__btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+
+/* --- LeaderboardDialog (post-partida) --- */
+.lb-dialog {
+  z-index: 1004;
+}
+
+.lb-dialog__panel {
+  width: min(480px, 100%);
+  text-align: left;
+  padding: 22px 20px 20px;
+}
+
+.lb-dialog__panel--won {
+  background: #0e0b00;
+  border-color: #c8a000;
+  box-shadow: 0 20px 60px rgba(200, 160, 0, 0.3);
+}
+
+.lb-dialog__panel--won .lb__table th {
+  border-bottom-color: rgba(200, 160, 0, 0.3);
+  color: #c8a000;
+  opacity: 1;
+}
+
+.lb-dialog__panel--won .lb__table td {
+  border-bottom-color: rgba(200, 160, 0, 0.08);
+}
+
+.lb-dialog__panel--won .lb__score-cell {
+  color: #ffd166;
+}
+
+.lb-dialog__title {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.lb-dialog__panel--won .lb-dialog__title {
+  color: #ffd166;
+  text-shadow: 0 0 12px rgba(255, 209, 102, 0.4);
+}
+
+.lb-dialog__body {
+  max-height: 52vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+}
+
+.lb-dialog__accept {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+
+/* --- LeaderboardViewer (botón HUD) --- */
+.lb-viewer {
+  z-index: 1003;
+  padding: 12px;
+}
+
+.lb-viewer__panel {
+  background: #fdfdfb;
+  color: #1d2025;
+  border-radius: 14px;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Pestaña "Ganadas": panel de fondo dorado oscuro */
+.lb-viewer__panel--won {
+  background: #0e0b00;
+  color: #f0e0a0;
+  border-color: rgba(200, 160, 0, 0.4);
+}
+
+.lb-viewer__header {
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, #f7f3ea 0%, #efeada 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.lb-viewer__header--won {
+  background: linear-gradient(180deg, #2c2000 0%, #1a1200 100%);
+  border-bottom-color: rgba(200, 160, 0, 0.3);
+}
+
+.lb-viewer__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0b3d1f;
+}
+
+.lb-viewer__header--won .lb-viewer__title {
+  color: #ffd166;
+  text-shadow: 0 0 10px rgba(255, 209, 102, 0.3);
+}
+
+.lb-viewer__tabs {
+  display: flex;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.07);
+  padding: 3px;
+  border-radius: 999px;
+}
+
+.lb-viewer__header--won .lb-viewer__tabs {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lb-viewer__tab {
+  border: 0;
+  background: transparent;
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lb-viewer__header--won .lb-viewer__tab {
+  color: rgba(240, 224, 160, 0.7);
+}
+
+.lb-viewer__tab.is-active {
+  background: #0b3d1f;
+  color: #fff;
+}
+
+.lb-viewer__header--won .lb-viewer__tab.is-active {
+  background: #c8a000;
+  color: #000;
+}
+
+.lb-viewer__body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 18px;
+}
+
+/* Sobreescribir colores de la tabla en fondo claro (pestaña "No ganadas") */
+.lb-viewer__body .lb__table th {
+  border-bottom-color: rgba(0, 0, 0, 0.12);
+  color: #555;
+  opacity: 1;
+}
+
+.lb-viewer__body .lb__table td {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+  color: #1d2025;
+}
+
+.lb-viewer__body .lb__score-cell {
+  color: #0b3d1f;
+}
+
+.lb-viewer__body .lb__empty {
+  color: #888;
+  opacity: 1;
+}
+
+/* Fondo dorado oscuro (pestaña "Ganadas") */
+.lb-viewer__body--won .lb__table th {
+  border-bottom-color: rgba(200, 160, 0, 0.3);
+  color: #c8a000;
+  opacity: 1;
+}
+
+.lb-viewer__body--won .lb__table td {
+  border-bottom-color: rgba(200, 160, 0, 0.08);
+  color: #f0e0a0;
+}
+
+.lb-viewer__body--won .lb__score-cell {
+  color: #ffd166;
+}
+
+.lb-viewer__body--won .lb__empty {
+  color: rgba(240, 224, 160, 0.5);
+  opacity: 1;
+}
+
+.lb-viewer__body--won .lb__row--new td {
+  background: rgba(200, 160, 0, 0.18);
+}
+
+.lb-viewer__footer {
+  padding: 10px 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  background: #fafaf6;
+}
+
+.lb-viewer__footer--won {
+  background: #1a1200;
+  border-top-color: rgba(200, 160, 0, 0.25);
+}
+
+/* ============================================================
+   13. Selector de número de palos (SuitSelectDialog)
    ============================================================ */
 
 .suit-select {

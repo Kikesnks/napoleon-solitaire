@@ -13,6 +13,7 @@ interface Props {
   onUndo(): void;
   onNewGame(): void;
   onShowRules(): void;
+  onShowLeaderboard(): void;
 }
 
 export function HUD({
@@ -25,7 +26,8 @@ export function HUD({
   canUndo,
   onUndo,
   onNewGame,
-  onShowRules
+  onShowRules,
+  onShowLeaderboard
 }: Props) {
   const t = STRINGS[lang];
   return (
@@ -38,6 +40,15 @@ export function HUD({
         <Stat label={t.monton} value={montonRemaining.toString()} />
       </div>
       <div className="hud__actions">
+        <button
+          type="button"
+          className="hud__btn hud__btn--icon"
+          onClick={onShowLeaderboard}
+          aria-label={t.leaderboard}
+          title={t.leaderboard}
+        >
+          🏆
+        </button>
         <button
           type="button"
           className="hud__btn hud__btn--icon"

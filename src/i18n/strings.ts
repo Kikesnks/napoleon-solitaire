@@ -32,6 +32,23 @@ export interface UIStrings {
   twoSuitsDesc: string;
   fourSuitsDesc: string;
   cancel: string;
+  // Liga de Campeones
+  leaderboard: string;
+  lbTabWon: string;
+  lbTabLost: string;
+  lbWonTitle: string;
+  lbLostTitle: string;
+  lbEnterTitle: string;
+  lbEnterPrompt: string;
+  lbNamePlaceholder: string;
+  lbSave: string;
+  lbAccept: string;
+  lbColPlayer: string;
+  lbColScore: string;
+  lbColDate: string;
+  lbColSuits: string;
+  lbEmpty: string;
+  lbYourScore: string;
 }
 
 export const STRINGS: Record<Lang, UIStrings> = {
@@ -57,7 +74,23 @@ export const STRINGS: Record<Lang, UIStrings> = {
     fourSuits: "4 palos",
     twoSuitsDesc: "Un palo rojo y uno negro (más fácil)",
     fourSuitsDesc: "Los cuatro palos — versión original",
-    cancel: "Cancelar"
+    cancel: "Cancelar",
+    leaderboard: "Liga",
+    lbTabWon: "Ganadas",
+    lbTabLost: "No ganadas",
+    lbWonTitle: "Liga de Campeones — Victorias",
+    lbLostTitle: "Liga de Campeones — Mejores partidas",
+    lbEnterTitle: "¡Has entrado en la Liga de Campeones!",
+    lbEnterPrompt: "Introduce tu nombre para guardar tu puntuación",
+    lbNamePlaceholder: "Tu nombre",
+    lbSave: "Guardar",
+    lbAccept: "Aceptar",
+    lbColPlayer: "Jugador",
+    lbColScore: "Puntos",
+    lbColDate: "Fecha",
+    lbColSuits: "Palos",
+    lbEmpty: "Aún no hay partidas registradas",
+    lbYourScore: "Tu puntuación"
   },
   en: {
     time: "Time",
@@ -81,6 +114,22 @@ export const STRINGS: Record<Lang, UIStrings> = {
     fourSuits: "4 suits",
     twoSuitsDesc: "One red suit and one black (easier)",
     fourSuitsDesc: "All four suits — original version",
-    cancel: "Cancel"
+    cancel: "Cancel",
+    leaderboard: "League",
+    lbTabWon: "Won",
+    lbTabLost: "Not won",
+    lbWonTitle: "Champions League — Victories",
+    lbLostTitle: "Champions League — Best games",
+    lbEnterTitle: "You've made the Champions League!",
+    lbEnterPrompt: "Enter your name to save your score",
+    lbNamePlaceholder: "Your name",
+    lbSave: "Save",
+    lbAccept: "Accept",
+    lbColPlayer: "Player",
+    lbColScore: "Score",
+    lbColDate: "Date",
+    lbColSuits: "Suits",
+    lbEmpty: "No games recorded yet",
+    lbYourScore: "Your score"
   }
 };
