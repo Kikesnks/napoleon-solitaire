@@ -181,14 +181,17 @@ function RulesES() {
       <section>
         <h3>Free cells A1, B1, C1, D1</h3>
         <ul>
-          <li>Si están vacías aceptan cualquier carta boca arriba.</li>
           <li>
-            Si tienen cartas, aceptan otra del <strong>mismo palo y color en orden
-            ascendente</strong> (rango = top + 1). Sirven como buffers ascendentes.
+            Aceptan otra carta del <strong>mismo palo y color en orden
+              ascendente</strong> (rango = top + 1). Sirven como buffers ascendentes.
           </li>
           <li>
             Cuando se vacían, la pila A/B/C/D correspondiente repone la free cell con
             su carta superior y voltea la siguiente carta tapada.
+          </li>
+          <li>
+            Cuando se vacían las 4 free cells, y no hay cartas en las pilas A, B, C, D
+            no se pueden seguir moviendo cartas a las free cells.
           </li>
         </ul>
       </section>
@@ -224,12 +227,8 @@ function RulesES() {
         <h3>Controles</h3>
         <ul>
           <li>
-            <strong>Tap o clic</strong> en una carta: la auto-promueve a la mejor
-            fundación posible.
-          </li>
-          <li>
             <strong>Arrastrar</strong>: la sueltas sobre cualquier fundación o free cell
-            válida; el destino legal se ilumina en dorado.
+            válida.
           </li>
           <li>
             <strong>Tap en el montón</strong>: reparte la siguiente tirada. Cuando está
@@ -311,15 +310,18 @@ function RulesEN() {
       <section>
         <h3>Free cells A1, B1, C1, D1</h3>
         <ul>
-          <li>If empty they accept any face-up card.</li>
           <li>
-            If they contain cards, they accept another card of the
+            They accept another card of the
             <strong> same suit and colour in ascending order</strong> (rank = top + 1).
             They act as ascending buffers.
           </li>
           <li>
             When empty, the matching A/B/C/D stack refills the free cell with its top
             card and flips the next face-down card.
+          </li>
+          <li>
+            When all 4 free cells are empty, and there are no cards left in piles
+            A, B, C, D, no further moves can be made to free cells.
           </li>
         </ul>
       </section>
@@ -354,12 +356,7 @@ function RulesEN() {
         <h3>Controls</h3>
         <ul>
           <li>
-            <strong>Tap or click</strong> a card: auto-promote it to the best matching
-            foundation.
-          </li>
-          <li>
-            <strong>Drag</strong> a card: drop it on any legal foundation or free cell;
-            valid drop targets light up in gold.
+            <strong>Drag</strong> a card: drop it on any legal foundation or free cell.
           </li>
           <li>
             <strong>Tap on the stock</strong>: deal the next batch. When empty and a
