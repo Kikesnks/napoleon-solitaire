@@ -1,24 +1,29 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /**
- * Celebración de victoria: 50 partículas que caen (confetti) + 4 ráfagas
- * radiales (fuegos artificiales) en puntos aleatorios. Todo con CSS puro,
- * sin lib externa. Los parámetros (posición, color, retardo, rotación...) se
- * fijan en mount via useMemo — cada partida ganada tiene un patrón ligeramente
- * distinto pero estable durante toda la celebración.
- *
- * Se monta cuando el jugador gana y se desmonta al iniciar nueva partida.
+ * Celebración de victoria en primer plano:
+ *  - 75 partículas de confeti cayendo en bucle infinito (CSS infinite).
+ *  - Ráfagas de fuegos artificiales que se regeneran cada 3.5 s mientras
+ *    el jugador no pulse "Jugar otra". Se monta sobre el overlay de victoria
+ *    (z-index 1000 > overlay 999) con pointer-events: none para que el botón
+ *    siga siendo pulsable.
  */
 
 const COLORS = [
   "#ffd166", // amarillo
   "#ef476f", // rosa
-  "#06d6a0", // verde
+  "#06d6a0", // verde menta
   "#118ab2", // azul
   "#ff8b3d", // naranja
   "#c879ff", // violeta
-  "#ff6b6b" // rojo
+  "#ff6b6b", // rojo
+  "#00f5d4", // cian
+  "#f72585", // magenta
+  "#4cc9f0", // azul cielo
+  "#7bed9f"  // verde lima
 ];
+
+type FallShape = "square" | "circle" | "strip";
 
 interface FallParticle {
   kind: "fall";
@@ -29,7 +34,8 @@ interface FallParticle {
   delay: number;
   duration: number;
   rotation: number;
-  shape: "square" | "circle";
+  drift: number;
+  shape: FallShape;
 }
 
 interface BurstParticle {
@@ -45,8 +51,6 @@ interface BurstParticle {
   travelY: number;
 }
 
-type Particle = FallParticle | BurstParticle;
-
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
@@ -55,69 +59,81 @@ function pickColor(): string {
   return COLORS[Math.floor(Math.random() * COLORS.length)];
 }
 
-export function Confetti() {
-  const particles: Particle[] = useMemo(() => {
-    const list: Particle[] = [];
+const SHAPES: FallShape[] = ["square", "circle", "strip"];
 
-    // 50 partículas cayendo desde arriba, repartidas por todo el ancho.
-    for (let i = 0; i < 50; i++) {
+function generateFall(): FallParticle[] {
+  return Array.from({ length: 75 }, (_, i) => ({
+    kind: "fall" as const,
+    id: i,
+    left: rand(0, 100),
+    color: pickColor(),
+    size: rand(6, 15),
+    delay: rand(0, 5.5),
+    duration: rand(2.5, 5.5),
+    rotation: rand(-360, 720),
+    drift: rand(-90, 90),
+    shape: SHAPES[Math.floor(Math.random() * SHAPES.length)]
+  }));
+}
+
+function generateBursts(seed: number): BurstParticle[] {
+  const list: BurstParticle[] = [];
+  const NUM_BURSTS = 7;
+  const RAYS = 20;
+  for (let b = 0; b < NUM_BURSTS; b++) {
+    const originX = rand(10, 90);
+    const originY = rand(8, 60);
+    const burstDelay = b * 0.45 + rand(0, 0.25);
+    for (let r = 0; r < RAYS; r++) {
+      const angle = (r / RAYS) * Math.PI * 2;
+      const distance = rand(130, 260);
       list.push({
-        kind: "fall",
-        id: i,
-        left: rand(0, 100),
+        kind: "burst" as const,
+        id: seed * 100_000 + b * 1000 + r,
+        originX,
+        originY,
         color: pickColor(),
-        size: rand(6, 14),
-        delay: rand(0, 3.5),
-        duration: rand(2.5, 5),
-        rotation: rand(-180, 540),
-        shape: Math.random() < 0.5 ? "square" : "circle"
+        size: rand(7, 14),
+        delay: burstDelay,
+        duration: rand(0.85, 1.45),
+        travelX: Math.cos(angle) * distance,
+        travelY: Math.sin(angle) * distance
       });
     }
+  }
+  return list;
+}
 
-    // 4 ráfagas tipo fuegos artificiales, escalonadas en el tiempo.
-    for (let b = 0; b < 4; b++) {
-      const originX = rand(20, 80);
-      const originY = rand(20, 55);
-      const burstDelay = 0.2 + b * 0.9 + rand(0, 0.2);
-      const numRays = 14;
-      for (let r = 0; r < numRays; r++) {
-        const angle = (r / numRays) * Math.PI * 2;
-        const distance = rand(120, 180);
-        list.push({
-          kind: "burst",
-          id: 1000 + b * 100 + r,
-          originX,
-          originY,
-          color: pickColor(),
-          size: rand(7, 11),
-          delay: burstDelay,
-          duration: rand(1.0, 1.5),
-          travelX: Math.cos(angle) * distance,
-          travelY: Math.sin(angle) * distance
-        });
-      }
-    }
+export function Confetti() {
+  const [burstSeed, setBurstSeed] = useState(0);
 
-    return list;
+  // Regenerar ráfagas cada 3.5 s para mantener el espectáculo en bucle.
+  useEffect(() => {
+    const id = window.setInterval(() => setBurstSeed((s) => s + 1), 3500);
+    return () => window.clearInterval(id);
   }, []);
+
+  const fallParticles = useMemo(generateFall, []);
+  const burstParticles = useMemo(() => generateBursts(burstSeed), [burstSeed]);
 
   return (
     <div className="confetti" aria-hidden>
-      {particles.map((p) => {
-        if (p.kind === "fall") {
-          const style: React.CSSProperties = {
-            left: `${p.left}%`,
-            top: `-20px`,
-            width: `${p.size}px`,
-            height: `${p.size}px`,
-            background: p.color,
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
-            ["--rot" as never]: `${p.rotation}deg`,
-            borderRadius: p.shape === "circle" ? "50%" : "2px"
-          };
-          return <div key={p.id} className="confetti__p confetti__p--fall" style={style} />;
-        }
+      {fallParticles.map((p) => {
+        const style: React.CSSProperties = {
+          left: `${p.left}%`,
+          top: "-24px",
+          width: p.shape === "strip" ? "4px" : `${p.size}px`,
+          height: p.shape === "strip" ? `${p.size * 2.8}px` : `${p.size}px`,
+          background: p.color,
+          animationDelay: `${p.delay}s`,
+          animationDuration: `${p.duration}s`,
+          ["--rot" as never]: `${p.rotation}deg`,
+          ["--drift" as never]: `${p.drift}px`,
+          borderRadius: p.shape === "circle" ? "50%" : "2px"
+        };
+        return <div key={p.id} className="confetti__p confetti__p--fall" style={style} />;
+      })}
+      {burstParticles.map((p) => {
         const style: React.CSSProperties = {
           left: `${p.originX}%`,
           top: `${p.originY}%`,

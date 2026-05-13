@@ -606,12 +606,15 @@ button {
 
 .overlay__panel--win {
   border-color: var(--primary);
-  box-shadow: 0 20px 60px rgba(255, 209, 102, 0.25);
+  box-shadow: 0 20px 60px rgba(255, 209, 102, 0.35), 0 0 0 1px rgba(255, 209, 102, 0.2);
+  /* Fondo más opaco para que el texto se lea cuando el confeti pasa por delante. */
+  background: #111111;
 }
 
 .overlay__title {
   margin: 0 0 8px;
   font-size: 24px;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.9), 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .overlay__message {
@@ -947,7 +950,9 @@ button {
 /* ============================================================
    11. Celebración al ganar: confetti + fuegos artificiales
    El componente <Confetti /> se monta cuando status === "won".
-   Vive bajo el modal (z-index 990 < 999) y por encima del tablero.
+   Está en PRIMER PLANO (z-index 1000 > overlay 999) con
+   pointer-events: none para que el botón "Jugar otra" siga
+   siendo pulsable a través de él.
    ============================================================ */
 
 .confetti {
@@ -955,7 +960,7 @@ button {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 990;
+  z-index: 1000; /* delante del overlay de victoria (999) */
 }
 
 .confetti__p {
@@ -963,27 +968,30 @@ button {
   will-change: transform, opacity;
 }
 
+/* Bucle infinito: el confeti cae sin parar hasta que el jugador pulsa "Jugar otra". */
 .confetti__p--fall {
-  animation: confetti-fall linear forwards;
+  animation: confetti-fall linear infinite;
 }
 
 @keyframes confetti-fall {
   0% {
-    transform: translate(0, 0) rotate(0);
+    transform: translate(0, 0) rotate(0deg);
     opacity: 0;
   }
-  10% {
+  8% {
     opacity: 1;
   }
   85% {
     opacity: 1;
   }
   100% {
-    transform: translate(calc(var(--rot, 180deg) * 0.1), 110vh) rotate(var(--rot, 540deg));
+    transform: translate(var(--drift, 30px), 110vh) rotate(var(--rot, 540deg));
     opacity: 0;
   }
 }
 
+/* Los fuegos artificiales se regeneran desde JS cada 3.5 s (burstSeed cambia)
+   para simular un bucle con posiciones y colores aleatorios nuevos cada vez. */
 .confetti__p--burst {
   border-radius: 50%;
   animation: confetti-burst ease-out forwards;
@@ -994,12 +1002,15 @@ button {
     transform: translate(0, 0) scale(0);
     opacity: 1;
   }
-  35% {
-    transform: translate(calc(var(--burst-x) * 0.45), calc(var(--burst-y) * 0.45)) scale(1.1);
+  20% {
+    transform: translate(calc(var(--burst-x) * 0.3), calc(var(--burst-y) * 0.3)) scale(1.4);
     opacity: 1;
   }
+  55% {
+    opacity: 0.8;
+  }
   100% {
-    transform: translate(var(--burst-x), var(--burst-y)) scale(0.3);
+    transform: translate(var(--burst-x), var(--burst-y)) scale(0.15);
     opacity: 0;
   }
 }
@@ -1009,7 +1020,7 @@ button {
    ============================================================ */
 
 .suit-select {
-  z-index: 1001; /* por encima del overlay de fin de partida (999) */
+  z-index: 1002; /* por encima del confetti (1000) y del overlay (999) */
 }
 
 .suit-select__panel {
