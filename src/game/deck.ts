@@ -3,7 +3,7 @@ import type { Card, DeckIndex, Rank, Suit } from "./types";
 const SUITS: Suit[] = ["spades", "hearts", "diamonds", "clubs"];
 const RANKS: Rank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
-/** Crea las 104 cartas (2 barajas francesas). */
+/** Crea las 104 cartas (2 barajas francesas, 4 palos). */
 export function buildDecks(): Card[] {
   const cards: Card[] = [];
   for (const deck of [0, 1] as DeckIndex[]) {
@@ -14,6 +14,29 @@ export function buildDecks(): Card[] {
           suit,
           rank,
           deck,
+          faceUp: false
+        });
+      }
+    }
+  }
+  return cards;
+}
+
+/**
+ * Crea las 104 cartas en modo 2 palos: 4 copias del palo rojo elegido y 4
+ * copias del palo negro elegido (4×13 + 4×13 = 104). El jugador usa sólo
+ * dos palos distintos, lo que simplifica la partida.
+ */
+export function buildDecks2Suits(redSuit: Suit, blackSuit: Suit): Card[] {
+  const cards: Card[] = [];
+  for (const suit of [redSuit, blackSuit]) {
+    for (let copy = 0; copy < 4; copy++) {
+      for (const rank of RANKS) {
+        cards.push({
+          id: `${copy}-${suit}-${rank}`,
+          suit,
+          rank,
+          deck: copy as DeckIndex,
           faceUp: false
         });
       }

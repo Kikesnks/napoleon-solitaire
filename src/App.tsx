@@ -4,9 +4,11 @@ import { Confetti } from "./components/Confetti";
 import { GameOverlay } from "./components/GameOverlay";
 import { HUD } from "./components/HUD";
 import { Instructions } from "./components/Instructions";
+import { SuitSelectDialog } from "./components/SuitSelectDialog";
 import { useGameEngine } from "./hooks/useGameEngine";
 import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
+import type { SuitMode } from "./game";
 
 /** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
 const DEAL_ANIMATION_MS = 1400;
@@ -23,6 +25,16 @@ export default function App() {
    * - Desde el HUD, el botón "📖 Reglas" lo reabre cuando quieras.
    */
   const [showRules, setShowRules] = useState<boolean>(firstRun);
+
+  /**
+   * pendingSuitSource: cuando está establecido, muestra el selector de palos.
+   * "hud"      → el jugador pulsó "Nueva" (puede cancelar y seguir la partida).
+   * "gameover" → el jugador pulsó "Jugar otra" (no puede cancelar).
+   * "firstrun" → primer arranque, se muestra tras cerrar las instrucciones.
+   */
+  const [pendingSuitSource, setPendingSuitSource] = useState<
+    "hud" | "gameover" | "firstrun" | null
+  >(null);
 
   // Si el flag firstRun cambia (otro tab marca como visto), reflejarlo aquí.
   useEffect(() => {
@@ -57,6 +69,12 @@ export default function App() {
         }
         return;
       }
+      if (pendingSuitSource === "hud" && e.key === "Escape") {
+        e.preventDefault();
+        handleSuitCancel();
+        return;
+      }
+      if (pendingSuitSource !== null) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
       if (e.key === "u" || e.key === "U") {
         e.preventDefault();
@@ -69,11 +87,25 @@ export default function App() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, showRules]);
+  }, [engine, showRules, pendingSuitSource]);
 
   const dismissRules = () => {
-    if (firstRun) markSeen();
-    setShowRules(false);
+    if (firstRun) {
+      markSeen();
+      setShowRules(false);
+      setPendingSuitSource("firstrun");
+    } else {
+      setShowRules(false);
+    }
+  };
+
+  const handleSuitSelect = (mode: SuitMode) => {
+    setPendingSuitSource(null);
+    engine.newGame(undefined, mode);
+  };
+
+  const handleSuitCancel = () => {
+    setPendingSuitSource(null);
   };
 
   return (
@@ -87,7 +119,7 @@ export default function App() {
         montonRemaining={state.positions.monton.length}
         canUndo={engine.canUndo}
         onUndo={engine.undo}
-        onNewGame={() => engine.newGame()}
+        onNewGame={() => setPendingSuitSource("hud")}
         onShowRules={() => setShowRules(true)}
       />
       <main className="app__main">
@@ -105,7 +137,7 @@ export default function App() {
         status={state.status}
         score={state.score}
         elapsedMs={elapsedMs}
-        onPlayAgain={() => engine.newGame()}
+        onPlayAgain={() => setPendingSuitSource("gameover")}
       />
       {showRules && (
         <Instructions
@@ -113,6 +145,14 @@ export default function App() {
           onLangChange={setLang}
           onDismiss={dismissRules}
           firstRun={firstRun}
+        />
+      )}
+      {pendingSuitSource !== null && (
+        <SuitSelectDialog
+          lang={lang}
+          canCancel={pendingSuitSource === "hud"}
+          onSelect={handleSuitSelect}
+          onCancel={handleSuitCancel}
         />
       )}
     </div>

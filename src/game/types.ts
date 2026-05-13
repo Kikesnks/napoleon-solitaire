@@ -6,7 +6,8 @@ export type Suit = "spades" | "hearts" | "diamonds" | "clubs";
 /** 1 = As, 11 = J, 12 = Q, 13 = K. */
 export type Rank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 
-export type DeckIndex = 0 | 1;
+export type DeckIndex = 0 | 1 | 2 | 3;
+export type SuitMode = 2 | 4;
 
 export interface Card {
   /** Identificador único e inmutable. Necesario porque hay 2 barajas. */
@@ -72,6 +73,7 @@ export interface GameState extends CoreState {
   finishedAt: number | null;
   /** Historial para undo. Snapshots inmutables previos a cada acción. */
   history: CoreState[];
+  suitMode: SuitMode;
 }
 
 /** Cuántas cartas reparte el montón en cada ronda. */

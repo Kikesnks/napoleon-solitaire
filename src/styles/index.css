@@ -1004,6 +1004,100 @@ button {
   }
 }
 
+/* ============================================================
+   12. Selector de número de palos (SuitSelectDialog)
+   ============================================================ */
+
+.suit-select {
+  z-index: 1001; /* por encima del overlay de fin de partida (999) */
+}
+
+.suit-select__panel {
+  width: min(400px, 100%);
+}
+
+.suit-select__options {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0 4px;
+}
+
+.suit-select__option {
+  flex: 1;
+  padding: 16px 10px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--hud-fg);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+
+.suit-select__option:hover,
+.suit-select__option:focus-visible {
+  border-color: var(--primary);
+  background: rgba(255, 209, 102, 0.1);
+  outline: none;
+}
+
+.suit-select__option:active {
+  transform: scale(0.97);
+}
+
+.suit-select__icons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.suit-select__icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suit-select__icon .suit {
+  width: 100%;
+  height: 100%;
+}
+
+.suit-select__icon--red {
+  color: var(--card-red);
+}
+
+.suit-select__icon--black {
+  color: var(--card-black, #050505);
+  /* En fondo oscuro el negro puro no se ve: usamos blanco/crema. */
+  color: #e8e0d0;
+}
+
+.suit-select__name {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.suit-select__desc {
+  font-size: 11px;
+  opacity: 0.72;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.suit-select__cancel {
+  display: block;
+  margin: 14px auto 0;
+  min-width: 100px;
+}
+
 /* Accesibilidad: respeto a prefers-reduced-motion. */
 @media (prefers-reduced-motion: reduce) {
   .board--dealing .pile__card .card,

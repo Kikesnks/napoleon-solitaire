@@ -25,6 +25,13 @@ export interface UIStrings {
   wonMessage: string;
   lostMessage: string;
   playAgain: string;
+  // Selector de palos
+  chooseSuits: string;
+  twoSuits: string;
+  fourSuits: string;
+  twoSuitsDesc: string;
+  fourSuitsDesc: string;
+  cancel: string;
 }
 
 export const STRINGS: Record<Lang, UIStrings> = {
@@ -44,7 +51,13 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lost: "Fin de la partida",
     wonMessage: "Solitario completado.",
     lostMessage: "Se acabaron los repartos del montón sin ordenar todas las cartas.",
-    playAgain: "Jugar otra"
+    playAgain: "Jugar otra",
+    chooseSuits: "¿Con cuántos palos?",
+    twoSuits: "2 palos",
+    fourSuits: "4 palos",
+    twoSuitsDesc: "Un palo rojo y uno negro (más fácil)",
+    fourSuitsDesc: "Los cuatro palos — versión original",
+    cancel: "Cancelar"
   },
   en: {
     time: "Time",
@@ -62,6 +75,12 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lost: "Game over",
     wonMessage: "Solitaire complete.",
     lostMessage: "The stock was exhausted before all cards could be ordered.",
-    playAgain: "Play again"
+    playAgain: "Play again",
+    chooseSuits: "How many suits?",
+    twoSuits: "2 suits",
+    fourSuits: "4 suits",
+    twoSuitsDesc: "One red suit and one black (easier)",
+    fourSuitsDesc: "All four suits — original version",
+    cancel: "Cancel"
   }
 };

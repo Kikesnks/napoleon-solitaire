@@ -1,5 +1,5 @@
 export * from "./types";
-export { buildDecks, mulberry32, shuffle } from "./deck";
+export { buildDecks, buildDecks2Suits, mulberry32, shuffle } from "./deck";
 export { createInitialState, snapshot } from "./state";
 export {
   topOf,

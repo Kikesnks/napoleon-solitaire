@@ -420,7 +420,8 @@ export function reduceAction(state: GameState, action: Action): GameState {
     ...nextCore,
     startedAt: state.startedAt,
     finishedAt: nextCore.status === "playing" ? null : Date.now(),
-    history: [...state.history, previous].slice(-200)
+    history: [...state.history, previous].slice(-200),
+    suitMode: state.suitMode
   };
 }
 
@@ -431,6 +432,7 @@ export function undo(state: GameState): GameState {
     ...prev,
     startedAt: state.startedAt,
     finishedAt: prev.status === "playing" ? null : state.finishedAt,
-    history: state.history.slice(0, -1)
+    history: state.history.slice(0, -1),
+    suitMode: state.suitMode
   };
 }

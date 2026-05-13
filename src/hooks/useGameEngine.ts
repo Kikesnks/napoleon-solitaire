@@ -5,12 +5,13 @@ import {
   undo as undoState,
   type Action,
   type GameState,
-  type PositionId
+  type PositionId,
+  type SuitMode
 } from "../game";
 
 export interface GameEngine {
   state: GameState;
-  newGame(seed?: number): void;
+  newGame(seed?: number, suitMode?: SuitMode): void;
   move(from: PositionId, to: PositionId): void;
   deal(): void;
   autoPromote(from: PositionId): void;
@@ -26,8 +27,8 @@ export function useGameEngine(initialSeed?: number): GameEngine {
     []
   );
 
-  const newGame = useCallback((seed?: number) => {
-    setState(createInitialState({ seed }));
+  const newGame = useCallback((seed?: number, suitMode: SuitMode = 4) => {
+    setState(createInitialState({ seed, suitMode }));
   }, []);
 
   const move = useCallback(

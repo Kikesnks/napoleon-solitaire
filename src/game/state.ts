@@ -1,11 +1,13 @@
-import { buildDecks, mulberry32, shuffle } from "./deck";
+import { buildDecks, buildDecks2Suits, mulberry32, shuffle } from "./deck";
 import {
   ALL_POSITIONS,
   STOCKS,
   type Card,
   type CoreState,
   type GameState,
-  type PositionId
+  type PositionId,
+  type Suit,
+  type SuitMode
 } from "./types";
 
 function emptyPositions(): Record<PositionId, Card[]> {
@@ -19,6 +21,7 @@ export interface InitOptions {
   /** Permite inyectar una baraja ya construida (tests). */
   preshuffled?: Card[];
   now?: number;
+  suitMode?: SuitMode;
 }
 
 /**
@@ -28,9 +31,20 @@ export interface InitOptions {
  * - Las 64 restantes en el montón, boca abajo.
  */
 export function createInitialState(options: InitOptions = {}): GameState {
-  const { seed, preshuffled, now = Date.now() } = options;
+  const { seed, preshuffled, now = Date.now(), suitMode = 4 } = options;
   const rng = seed != null ? mulberry32(seed) : Math.random;
-  const cards = preshuffled ? preshuffled.slice() : shuffle(buildDecks(), rng);
+
+  let cards: Card[];
+  if (preshuffled) {
+    cards = preshuffled.slice();
+  } else if (suitMode === 2) {
+    const redSuit: Suit = rng() < 0.5 ? "hearts" : "diamonds";
+    const blackSuit: Suit = rng() < 0.5 ? "spades" : "clubs";
+    cards = shuffle(buildDecks2Suits(redSuit, blackSuit), rng);
+  } else {
+    cards = shuffle(buildDecks(), rng);
+  }
+
   if (cards.length !== 104) {
     throw new Error(`Se esperaban 104 cartas, llegaron ${cards.length}`);
   }
@@ -76,7 +90,8 @@ export function createInitialState(options: InitOptions = {}): GameState {
     ...core,
     startedAt: now,
     finishedAt: null,
-    history: []
+    history: [],
+    suitMode
   };
 }
 
