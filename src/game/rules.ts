@@ -363,8 +363,14 @@ function scoreForMove(from: PositionId, to: PositionId, cleared: boolean): numbe
 export function autoPromote(state: CoreState, from: PositionId): { state: CoreState; moved: boolean } {
   const card = topOf(state, from);
   if (!card || !card.faceUp || !isValidSource(from)) return { state, moved: false };
+  const isStock = STOCKS.includes(from as StockId);
   const candidates: PositionId[] = [...FOUNDATION_DESC, "X"];
   for (const dest of candidates) {
+    // Un Rey en A/B/C/D no se auto-coloca en una fundación descendente vacía:
+    // esa decisión estratégica corresponde siempre al jugador.
+    if (isStock && isDescFoundation(dest) && card.rank === 13 && topOf(state, dest) === null) {
+      continue;
+    }
     if (canPlace(card, dest, topOf(state, dest))) {
       const result = chainMoveToFoundation(state, from, dest);
       return { state: result.state, moved: true };
