@@ -184,7 +184,6 @@ export default function App() {
           state={state}
           dealing={dealing}
           onMove={engine.move}
-          onAutoPromote={engine.autoPromote}
           onDeal={engine.deal}
         />
       </main>

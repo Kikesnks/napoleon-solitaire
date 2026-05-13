@@ -17,7 +17,6 @@ interface Props {
    *  entran con stagger CSS — animación de reparto al empezar partida. */
   dealing?: boolean;
   onMove(from: PositionId, to: PositionId): void;
-  onAutoPromote(from: PositionId): void;
   onDeal(): void;
 }
 
@@ -35,7 +34,7 @@ interface Props {
  * apiladas equivalgan en altura a una vertical). El layout entero usa CSS Grid
  * con áreas con nombre — ver `index.css` sección "Tablero - layout en cruz".
  */
-export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }: Props) {
+export function Board({ state, dealing = false, onMove, onDeal }: Props) {
   const isLegalTarget = useCallback(
     (from: PositionId, to: PositionId) => {
       if (from === to) return false;
@@ -102,7 +101,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
           isDropTarget={dropHinted("B1")}
           isPlayableEmpty
           onPointerDownTop={(e) => beginDrag(e, "B1")}
-          onClickTop={() => onAutoPromote("B1")}
           hideTop={isHidden("B1")}
         />
         <PileView
@@ -111,7 +109,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
           label="B"
           horizontal
           onPointerDownTop={(e) => beginDrag(e, "B")}
-          onClickTop={() => onAutoPromote("B")}
           hideTop={isHidden("B")}
         />
       </div>
@@ -148,7 +145,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
         isDropTarget={dropHinted("A1")}
         isPlayableEmpty
         onPointerDownTop={(e) => beginDrag(e, "A1")}
-        onClickTop={() => onAutoPromote("A1")}
         hideTop={isHidden("A1")}
       />
       <PileView
@@ -156,7 +152,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
         cards={pileFor("A")}
         label="A"
         onPointerDownTop={(e) => beginDrag(e, "A")}
-        onClickTop={() => onAutoPromote("A")}
         hideTop={isHidden("A")}
       />
       <PileView
@@ -167,7 +162,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
         isDropTarget={dropHinted("X")}
         isPlayableEmpty
         onPointerDownTop={(e) => beginDrag(e, "X")}
-        onClickTop={() => onAutoPromote("X")}
         hideTop={isHidden("X")}
       />
       <PileView
@@ -175,7 +169,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
         cards={pileFor("C")}
         label="C"
         onPointerDownTop={(e) => beginDrag(e, "C")}
-        onClickTop={() => onAutoPromote("C")}
         hideTop={isHidden("C")}
       />
       <PileView
@@ -185,7 +178,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
         isDropTarget={dropHinted("C1")}
         isPlayableEmpty
         onPointerDownTop={(e) => beginDrag(e, "C1")}
-        onClickTop={() => onAutoPromote("C1")}
         hideTop={isHidden("C1")}
       />
 
@@ -197,7 +189,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
           label="D"
           horizontal
           onPointerDownTop={(e) => beginDrag(e, "D")}
-          onClickTop={() => onAutoPromote("D")}
           hideTop={isHidden("D")}
         />
         <PileView
@@ -208,7 +199,6 @@ export function Board({ state, dealing = false, onMove, onAutoPromote, onDeal }:
           isDropTarget={dropHinted("D1")}
           isPlayableEmpty
           onPointerDownTop={(e) => beginDrag(e, "D1")}
-          onClickTop={() => onAutoPromote("D1")}
           hideTop={isHidden("D1")}
         />
       </div>
