@@ -7,18 +7,18 @@
 // 4. Si todo cuadra: inserta en Supabase y devuelve el top 10 actualizado.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { insertEntry, selectTop } from "../_shared/supabase";
-import { createInitialState } from "../../src/game/state";
-import { reduceAction } from "../../src/game/rules";
-import type { Action } from "../../src/game/rules";
+import { insertEntry, selectTop } from "../_shared/supabase.js";
+import { createInitialState } from "../../src/game/state.js";
+import { reduceAction } from "../../src/game/rules.js";
+import type { Action } from "../../src/game/rules.js";
 import {
   LEADERBOARD_MAX,
   type ErrorResponse,
   type LeaderboardEntry,
   type SubmitPayload,
   type SubmitResponse
-} from "../../src/game/leaderboard-types";
-import type { GameState } from "../../src/game/types";
+} from "../../src/game/leaderboard-types.js";
+import type { GameState } from "../../src/game/types.js";
 
 const MAX_NAME = 30;
 const MAX_ACTIONS = 5000; // cota dura para evitar payloads abusivos.

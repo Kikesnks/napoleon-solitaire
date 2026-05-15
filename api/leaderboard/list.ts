@@ -2,8 +2,8 @@
 // Devuelve el top 10 de la categoría solicitada desde Supabase.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { selectTop } from "../_shared/supabase";
-import { LEADERBOARD_MAX } from "../../src/game/leaderboard-types";
+import { selectTop } from "../_shared/supabase.js";
+import { LEADERBOARD_MAX } from "../../src/game/leaderboard-types.js";
 import type {
   ErrorResponse,
   LeaderboardCategory,

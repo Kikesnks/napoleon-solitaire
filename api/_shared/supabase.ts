@@ -2,7 +2,7 @@
 // Evita añadir dependencias al bundle. Sólo cubrimos los dos endpoints
 // que necesitamos: SELECT del top N y INSERT validado.
 
-import type { LeaderboardCategory } from "../../src/game/leaderboard-types";
+import type { LeaderboardCategory } from "../../src/game/leaderboard-types.js";
 
 export interface DbEntry {
   name: string;
