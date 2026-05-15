@@ -1,6 +1,6 @@
-export * from "./types";
-export { buildDecks, buildDecks2Suits, mulberry32, shuffle } from "./deck";
-export { createInitialState, snapshot } from "./state";
+export * from "./types.js";
+export { buildDecks, buildDecks2Suits, mulberry32, shuffle } from "./deck.js";
+export { createInitialState, snapshot } from "./state.js";
 export {
   topOf,
   isFoundation,
@@ -20,4 +20,4 @@ export {
   undo,
   type Action,
   type MoveResult
-} from "./rules";
+} from "./rules.js";

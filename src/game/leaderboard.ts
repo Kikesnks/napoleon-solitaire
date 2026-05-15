@@ -6,9 +6,9 @@ import type {
   LeaderboardEntry,
   SubmitPayload,
   SubmitResponse
-} from "./leaderboard-types";
+} from "./leaderboard-types.js";
 
-export type { LeaderboardCategory, LeaderboardEntry } from "./leaderboard-types";
+export type { LeaderboardCategory, LeaderboardEntry } from "./leaderboard-types.js";
 
 const API_BASE = "/api/leaderboard";
 

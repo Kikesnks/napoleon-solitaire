@@ -1,4 +1,4 @@
-import { snapshot } from "./state";
+import { snapshot } from "./state.js";
 import {
   DEAL_PILES,
   DEAL_SIZE_BY_ROUND,
@@ -16,7 +16,7 @@ import {
   type PositionId,
   type Round,
   type StockId
-} from "./types";
+} from "./types.js";
 
 // ---------- Helpers de inspección ----------
 

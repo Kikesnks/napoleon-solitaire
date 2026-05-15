@@ -1,4 +1,4 @@
-import { buildDecks, buildDecks2Suits, mulberry32, shuffle } from "./deck";
+import { buildDecks, buildDecks2Suits, mulberry32, shuffle } from "./deck.js";
 import {
   ALL_POSITIONS,
   STOCKS,
@@ -8,7 +8,7 @@ import {
   type PositionId,
   type Suit,
   type SuitMode
-} from "./types";
+} from "./types.js";
 
 function emptyPositions(): Record<PositionId, Card[]> {
   const map = {} as Record<PositionId, Card[]>;

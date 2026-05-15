@@ -1,7 +1,7 @@
 // Tipos compartidos entre el cliente (React) y el servidor (Vercel Functions).
 // No importes desde aquí nada que dependa de DOM/Node — sólo declaraciones.
 
-import type { LoggedAction, SuitMode } from "./types";
+import type { LoggedAction, SuitMode } from "./types.js";
 
 export type LeaderboardCategory = "won" | "lost";
 
