@@ -24,8 +24,10 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/node": "^25.8.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@vercel/node": "^5.8.1",
     "@vitejs/plugin-react": "^4.3.4",
     "pdf-lib": "^1.17.1",
     "playwright": "^1.59.1",

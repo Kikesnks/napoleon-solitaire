@@ -171,6 +171,47 @@ La lógica del juego es función pura: cualquier framework de tests adicional
 (Vitest, Jest) puede importar desde `src/game/index.ts` y ejecutar
 partidas deterministas pasando una `seed` a `createInitialState`.
 
+## Leaderboard global (Supabase + Vercel)
+
+El leaderboard se persiste en una base de datos remota. Los scores se envían a
+endpoints serverless en Vercel que **replican la partida con el mismo motor
+de reglas** antes de aceptar la inserción — así un cliente manipulado no puede
+publicar puntuaciones falsas.
+
+### 1. Supabase
+
+1. Crea un proyecto en https://supabase.com (gratis).
+2. Project → SQL Editor → ejecuta el contenido de
+   [`supabase/schema.sql`](./supabase/schema.sql) (crea la tabla, los índices
+   y las políticas RLS).
+3. Project → Settings → API: copia la **Project URL** y la **service_role
+   secret**. La service_role salta RLS — sólo se usa desde el backend.
+
+### 2. Vercel
+
+1. Crea un proyecto en https://vercel.com importando este repositorio.
+2. Project → Settings → Environment Variables → añade:
+   - `SUPABASE_URL` = la URL del paso 1.
+   - `SUPABASE_SERVICE_ROLE_KEY` = la service_role del paso 1.
+3. Deploy. Vercel detecta automáticamente Vite + las funciones bajo `api/`.
+
+Una vez desplegado, la app web sirve el bundle de Vite en `/` y los endpoints
+`/api/leaderboard/list` (GET) y `/api/leaderboard/submit` (POST). El cliente
+los consume internamente.
+
+### Anti-trampas: ¿cómo funciona la validación?
+
+- Cada partida guarda en su estado: la **semilla** del PRNG inicial, el modo
+  de palos (2 o 4) y un **log de acciones** (`move`/`deal`/`autoPromote`).
+- Al enviar al leaderboard, el payload incluye esos tres campos.
+- En el servidor, `api/leaderboard/submit.ts` instancia el motor con la misma
+  semilla y modo y reproduce el log paso a paso.
+- Sólo si el `status` y `score` del estado simulado coinciden con los del
+  payload, se inserta en Supabase.
+
+Los movimientos siguen siendo deterministas porque `mulberry32` se siembra
+con el mismo entero y el motor es pura función de su input.
+
 ## Regenerar el PDF de reglas
 
 ```bash

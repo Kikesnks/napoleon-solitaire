@@ -11,8 +11,9 @@ import { SuitSelectDialog } from "./components/SuitSelectDialog";
 import { useGameEngine } from "./hooks/useGameEngine";
 import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
+import { STRINGS } from "./i18n/strings";
 import type { SuitMode, Status } from "./game";
-import { addEntry, qualifies, type LeaderboardCategory, type LeaderboardEntry } from "./game/leaderboard";
+import { qualifies, submitScore, type LeaderboardCategory, type LeaderboardEntry } from "./game/leaderboard";
 
 /** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
 const DEAL_ANIMATION_MS = 1400;
@@ -50,10 +51,17 @@ export default function App() {
   >("firstrun");
 
   // ── Liga de Campeones ─────────────────────────────────────────────────────
+  // El flujo es asíncrono porque la persistencia es en servidor (Supabase):
+  //  1. Al terminar la partida, consultamos al servidor si el score clasifica.
+  //  2. Si sí, pedimos el nombre.
+  //  3. Enviamos el payload (seed + acciones) para que el servidor valide
+  //     y devuelva el top 10 actualizado, que pintamos resaltando la entrada.
   type LbPhase =
     | { step: "idle" }
     | { step: "name-entry"; category: LeaderboardCategory; score: number; suitMode: SuitMode }
-    | { step: "show-table"; category: LeaderboardCategory; entries: LeaderboardEntry[]; highlightTs: number };
+    | { step: "submitting"; category: LeaderboardCategory }
+    | { step: "show-table"; category: LeaderboardCategory; entries: LeaderboardEntry[]; highlightTs: number }
+    | { step: "error"; category: LeaderboardCategory; score: number; suitMode: SuitMode; message: string };
 
   const [lbPhase, setLbPhase] = useState<LbPhase>({ step: "idle" });
   const [showLbViewer, setShowLbViewer] = useState(false);
@@ -73,20 +81,50 @@ export default function App() {
     if (prev !== "playing") return; // ya gestionado en esta partida
 
     const category: LeaderboardCategory = cur === "won" ? "won" : "lost";
-    if (qualifies(category, state.score)) {
+    let cancelled = false;
+    void qualifies(category, state.score).then((ok) => {
+      if (cancelled || !ok) return;
       setLbPhase({ step: "name-entry", category, score: state.score, suitMode: state.suitMode });
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
 
-  const handleLbNameSave = (name: string) => {
+  const handleLbNameSave = async (name: string) => {
     if (lbPhase.step !== "name-entry") return;
-    const ts = Date.now();
-    const d = new Date();
-    const date = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
-    const entry: LeaderboardEntry = { name, score: lbPhase.score, date, suitMode: lbPhase.suitMode, ts };
-    const entries = addEntry(lbPhase.category, entry);
-    setLbPhase({ step: "show-table", category: lbPhase.category, entries, highlightTs: ts });
+    const { category, score, suitMode } = lbPhase;
+    setLbPhase({ step: "submitting", category });
+    try {
+      const entries = await submitScore({
+        name,
+        category,
+        score,
+        suitMode,
+        seed: state.seed,
+        actions: state.actionLog
+      });
+      // El servidor devuelve el top 10 reordenado. Resaltamos la última
+      // entrada coincidente con name+score (no tenemos el ts asignado
+      // server-side, pero coincide en nombre y puntos).
+      const mine = [...entries].reverse().find((e) => e.name === name && e.score === score);
+      setLbPhase({
+        step: "show-table",
+        category,
+        entries,
+        highlightTs: mine ? mine.ts : -1
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLbPhase({ step: "error", category, score, suitMode, message: msg });
+    }
+  };
+
+  const handleLbRetry = () => {
+    if (lbPhase.step !== "error") return;
+    const { category, score, suitMode } = lbPhase;
+    setLbPhase({ step: "name-entry", category, score, suitMode });
   };
 
   const handleLbAccept = () => setLbPhase({ step: "idle" });
@@ -218,6 +256,33 @@ export default function App() {
           score={lbPhase.score}
           onSave={handleLbNameSave}
         />
+      )}
+      {lbPhase.step === "submitting" && (
+        <div className="overlay" role="dialog" aria-modal="true">
+          <div className="overlay__panel lb-dialog__panel">
+            <p className="lb__empty">{STRINGS[lang].lbSubmitting}</p>
+          </div>
+        </div>
+      )}
+      {lbPhase.step === "error" && (
+        <div className="overlay" role="dialog" aria-modal="true">
+          <div className="overlay__panel lb-dialog__panel">
+            <h2 className="lb-dialog__title">{STRINGS[lang].lbError}</h2>
+            <p className="lb__empty">{lbPhase.message}</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+              <button type="button" className="hud__btn" onClick={handleLbAccept}>
+                {STRINGS[lang].close}
+              </button>
+              <button
+                type="button"
+                className="hud__btn hud__btn--primary"
+                onClick={handleLbRetry}
+              >
+                {STRINGS[lang].lbRetry}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {lbPhase.step === "show-table" && (
         <LeaderboardDialog

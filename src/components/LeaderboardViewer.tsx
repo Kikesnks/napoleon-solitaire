@@ -1,5 +1,9 @@
-import { useState } from "react";
-import { getLeaderboard, type LeaderboardCategory } from "../game/leaderboard";
+import { useEffect, useState } from "react";
+import {
+  fetchLeaderboard,
+  type LeaderboardCategory,
+  type LeaderboardEntry
+} from "../game/leaderboard";
 import type { Lang } from "../i18n/strings";
 import { STRINGS } from "../i18n/strings";
 import { LbTable } from "./LeaderboardDialog";
@@ -9,11 +13,34 @@ interface Props {
   onClose(): void;
 }
 
+type FetchState =
+  | { kind: "loading" }
+  | { kind: "ok"; entries: LeaderboardEntry[] }
+  | { kind: "err"; message: string };
+
 export function LeaderboardViewer({ lang, onClose }: Props) {
   const [tab, setTab] = useState<LeaderboardCategory>("won");
+  const [state, setState] = useState<FetchState>({ kind: "loading" });
+  const [reloadToken, setReloadToken] = useState(0);
   const t = STRINGS[lang];
   const isWon = tab === "won";
-  const entries = getLeaderboard(tab);
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ kind: "loading" });
+    fetchLeaderboard(tab)
+      .then((entries) => {
+        if (!cancelled) setState({ kind: "ok", entries });
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : String(e);
+        setState({ kind: "err", message: msg });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, reloadToken]);
 
   return (
     <div className="overlay lb-viewer" role="dialog" aria-modal="true" aria-labelledby="lb-viewer-title">
@@ -45,7 +72,25 @@ export function LeaderboardViewer({ lang, onClose }: Props) {
         </header>
 
         <div className={`lb-viewer__body ${isWon ? "lb-viewer__body--won" : ""}`}>
-          <LbTable entries={entries} highlightTs={-1} lang={lang} />
+          {state.kind === "loading" && <p className="lb__empty">{t.lbLoading}</p>}
+          {state.kind === "err" && (
+            <div style={{ textAlign: "center" }}>
+              <p className="lb__empty">{t.lbError}</p>
+              <p className="lb__empty" style={{ fontSize: 12, opacity: 0.7 }}>
+                {state.message}
+              </p>
+              <button
+                type="button"
+                className="hud__btn"
+                onClick={() => setReloadToken((n) => n + 1)}
+              >
+                {t.lbRetry}
+              </button>
+            </div>
+          )}
+          {state.kind === "ok" && (
+            <LbTable entries={state.entries} highlightTs={-1} lang={lang} />
+          )}
         </div>
 
         <footer className={`lb-viewer__footer ${isWon ? "lb-viewer__footer--won" : ""}`}>

@@ -431,7 +431,9 @@ export function reduceAction(state: GameState, action: Action): GameState {
     startedAt: state.startedAt,
     finishedAt: nextCore.status === "playing" ? null : Date.now(),
     history: [...state.history, previous].slice(-200),
-    suitMode: state.suitMode
+    suitMode: state.suitMode,
+    seed: state.seed,
+    actionLog: [...state.actionLog, action]
   };
 }
 
@@ -443,6 +445,11 @@ export function undo(state: GameState): GameState {
     startedAt: state.startedAt,
     finishedAt: prev.status === "playing" ? null : state.finishedAt,
     history: state.history.slice(0, -1),
-    suitMode: state.suitMode
+    suitMode: state.suitMode,
+    seed: state.seed,
+    // Al deshacer, retiramos la última acción registrada. Esto mantiene la
+    // coherencia entre el estado actual y el log de acciones que se replica
+    // en el servidor para validación.
+    actionLog: state.actionLog.slice(0, -1)
   };
 }

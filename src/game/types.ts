@@ -68,12 +68,35 @@ export interface CoreState {
   completed: Card[];
 }
 
+/**
+ * Acción serializable para auditar la partida en el servidor.
+ * Coincide 1:1 con el tipo `Action` en rules.ts pero se redefine aquí para
+ * evitar dependencias circulares y para que sea claramente parte del esquema
+ * que viaja al backend en la validación anti-trampas.
+ */
+export type LoggedAction =
+  | { type: "move"; from: PositionId; to: PositionId }
+  | { type: "deal" }
+  | { type: "autoPromote"; from: PositionId };
+
 export interface GameState extends CoreState {
   startedAt: number;
   finishedAt: number | null;
   /** Historial para undo. Snapshots inmutables previos a cada acción. */
   history: CoreState[];
   suitMode: SuitMode;
+  /**
+   * Semilla del PRNG con la que se generó el reparto inicial. Necesaria para
+   * que el servidor pueda reproducir la partida y validar la puntuación.
+   */
+  seed: number;
+  /**
+   * Log de acciones desde el inicio de la partida, en orden. No se trunca con
+   * `undo`: al deshacer, se elimina la última acción (no se "navega" hacia
+   * atrás un histórico de undos). Se envía al servidor al final de la
+   * partida si el jugador clasifica al top 10.
+   */
+  actionLog: LoggedAction[];
 }
 
 /** Cuántas cartas reparte el montón en cada ronda. */

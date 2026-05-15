@@ -1,54 +1,75 @@
-import type { SuitMode } from "./types";
+// Cliente del leaderboard global. Habla con /api/leaderboard sobre HTTP.
+// La persistencia es server-side (Supabase) — ya no usamos localStorage.
 
-export type LeaderboardCategory = "won" | "lost";
+import type {
+  LeaderboardCategory,
+  LeaderboardEntry,
+  SubmitPayload,
+  SubmitResponse
+} from "./leaderboard-types";
 
-export interface LeaderboardEntry {
-  name: string;
-  score: number;
-  date: string;
-  suitMode: SuitMode;
-  ts: number; // Date.now() — garantiza unicidad al buscar la entrada recién añadida
+export type { LeaderboardCategory, LeaderboardEntry } from "./leaderboard-types";
+
+const API_BASE = "/api/leaderboard";
+
+interface ApiOk<T> {
+  ok: true;
+  entries?: T;
 }
 
-const KEYS: Record<LeaderboardCategory, string> = {
-  won: "napoleon_lb_won",
-  lost: "napoleon_lb_lost"
-};
+interface ApiErr {
+  ok: false;
+  error: string;
+}
 
-const MAX = 10;
-
-export function getLeaderboard(cat: LeaderboardCategory): LeaderboardEntry[] {
+async function parseJson<T>(res: Response): Promise<ApiOk<T> | ApiErr> {
   try {
-    const raw = localStorage.getItem(KEYS[cat]);
-    return raw ? (JSON.parse(raw) as LeaderboardEntry[]) : [];
+    return (await res.json()) as ApiOk<T> | ApiErr;
   } catch {
-    return [];
+    return { ok: false, error: `HTTP ${res.status}` };
   }
 }
 
-/** True si la puntuación entraría en el top 10. */
-export function qualifies(cat: LeaderboardCategory, score: number): boolean {
-  const board = getLeaderboard(cat);
-  if (board.length < MAX) return true;
-  return score > board[board.length - 1].score;
+/** Recupera el top 10 de la categoría. Lanza con mensaje legible si falla. */
+export async function fetchLeaderboard(
+  cat: LeaderboardCategory
+): Promise<LeaderboardEntry[]> {
+  const res = await fetch(`${API_BASE}/list?category=${encodeURIComponent(cat)}`);
+  const body = await parseJson<LeaderboardEntry[]>(res);
+  if (!res.ok || !body.ok) {
+    throw new Error("error" in body ? body.error : `HTTP ${res.status}`);
+  }
+  return body.entries ?? [];
 }
 
 /**
- * Inserta la entrada, reordena por puntuación (empate: ts más antiguo primero),
- * recorta a MAX y persiste. Devuelve la lista actualizada.
+ * Envía una partida al servidor. El backend la replica con el motor de
+ * reglas y verifica la puntuación antes de aceptarla. Devuelve el top 10
+ * actualizado tras la inserción.
  */
-export function addEntry(
-  cat: LeaderboardCategory,
-  entry: LeaderboardEntry
-): LeaderboardEntry[] {
-  const board = getLeaderboard(cat);
-  const updated = [...board, entry]
-    .sort((a, b) => b.score - a.score || a.ts - b.ts)
-    .slice(0, MAX);
-  try {
-    localStorage.setItem(KEYS[cat], JSON.stringify(updated));
-  } catch {
-    // localStorage lleno o no disponible — ignorar
+export async function submitScore(payload: SubmitPayload): Promise<LeaderboardEntry[]> {
+  const res = await fetch(`${API_BASE}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const body = (await parseJson<LeaderboardEntry[]>(res)) as SubmitResponse | ApiErr;
+  if (!res.ok || !body.ok) {
+    throw new Error("error" in body ? body.error : `HTTP ${res.status}`);
   }
-  return updated;
+  return body.entries;
+}
+
+/**
+ * ¿La puntuación entra en el top 10 actual? Optimismo del cliente: descarga
+ * el ranking y compara. El servidor también valida (vía la propia inserción
+ * que es atómica + selección reordenada), así que esto es sólo UX.
+ */
+export async function qualifies(
+  cat: LeaderboardCategory,
+  score: number
+): Promise<boolean> {
+  const entries = await fetchLeaderboard(cat);
+  if (entries.length < 10) return true;
+  return score > entries[entries.length - 1].score;
 }

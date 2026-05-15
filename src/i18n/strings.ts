@@ -49,6 +49,10 @@ export interface UIStrings {
   lbColSuits: string;
   lbEmpty: string;
   lbYourScore: string;
+  lbLoading: string;
+  lbError: string;
+  lbSubmitting: string;
+  lbRetry: string;
 }
 
 export const STRINGS: Record<Lang, UIStrings> = {
@@ -90,7 +94,11 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lbColDate: "Fecha",
     lbColSuits: "Palos",
     lbEmpty: "Aún no hay partidas registradas",
-    lbYourScore: "Tu puntuación"
+    lbYourScore: "Tu puntuación",
+    lbLoading: "Cargando ranking…",
+    lbError: "No se ha podido conectar con el servidor",
+    lbSubmitting: "Enviando puntuación…",
+    lbRetry: "Reintentar"
   },
   en: {
     time: "Time",
@@ -130,6 +138,10 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lbColDate: "Date",
     lbColSuits: "Suits",
     lbEmpty: "No games recorded yet",
-    lbYourScore: "Your score"
+    lbYourScore: "Your score",
+    lbLoading: "Loading leaderboard…",
+    lbError: "Could not connect to the server",
+    lbSubmitting: "Submitting score…",
+    lbRetry: "Retry"
   }
 };

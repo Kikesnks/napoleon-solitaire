@@ -31,8 +31,12 @@ export interface InitOptions {
  * - Las 64 restantes en el montón, boca abajo.
  */
 export function createInitialState(options: InitOptions = {}): GameState {
-  const { seed, preshuffled, now = Date.now(), suitMode = 4 } = options;
-  const rng = seed != null ? mulberry32(seed) : Math.random;
+  const { seed: seedOpt, preshuffled, now = Date.now(), suitMode = 4 } = options;
+  // Generamos siempre una semilla concreta para poder reproducir la partida
+  // en el servidor al validar el leaderboard. Si no nos la pasan, generamos
+  // un entero aleatorio de 32 bits.
+  const seed = seedOpt != null ? seedOpt : Math.floor(Math.random() * 0x1_0000_0000);
+  const rng = mulberry32(seed);
 
   let cards: Card[];
   if (preshuffled) {
@@ -91,7 +95,9 @@ export function createInitialState(options: InitOptions = {}): GameState {
     startedAt: now,
     finishedAt: null,
     history: [],
-    suitMode
+    suitMode,
+    seed,
+    actionLog: []
   };
 }
 

@@ -10,6 +10,7 @@ android
 ios
 .env
 .env.local
+.vercel
 screenshots
 
 # Build outputs y caché de TypeScript / Vite
@@ -24,3 +25,7 @@ vite.config.d.ts
 # Configuración local de Claude Code y notas locales del autor
 .claude/
 FALLOS*.txt
+
+.vercel
+.env*.local
+.agents/
