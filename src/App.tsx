@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { Board } from "./components/Board";
 import { Confetti } from "./components/Confetti";
 import { GameOverlay } from "./components/GameOverlay";
@@ -296,6 +297,7 @@ export default function App() {
       {showLbViewer && (
         <LeaderboardViewer lang={lang} onClose={() => setShowLbViewer(false)} />
       )}
+      <Analytics />
     </div>
   );
 }
