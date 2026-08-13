@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { clearSavedGame, loadGame, saveGame } from "../game/save";
 import {
   createInitialState,
   reduceAction,
@@ -19,8 +20,17 @@ export interface GameEngine {
   canUndo: boolean;
 }
 
-export function useGameEngine(initialSeed?: number): GameEngine {
-  const [state, setState] = useState<GameState>(() => createInitialState({ seed: initialSeed }));
+export function useGameEngine(initialSeed?: number, initialSuitMode: SuitMode = 4): GameEngine {
+  // Se retoma la partida guardada si la hay; si no, uno nuevo. Recargar la
+  // pagina no puede costarle al jugador la partida que llevaba.
+  const [state, setState] = useState<GameState>(
+    () => loadGame() ?? createInitialState({ seed: initialSeed, suitMode: initialSuitMode })
+  );
+
+  // Se guarda tras cada cambio. Es barato: solo semilla + registro de acciones.
+  useEffect(() => {
+    saveGame(state);
+  }, [state]);
 
   const dispatch = useCallback(
     (action: Action) => setState((prev) => reduceAction(prev, action)),
@@ -28,6 +38,7 @@ export function useGameEngine(initialSeed?: number): GameEngine {
   );
 
   const newGame = useCallback((seed?: number, suitMode: SuitMode = 4) => {
+    clearSavedGame();
     setState(createInitialState({ seed, suitMode }));
   }, []);
 

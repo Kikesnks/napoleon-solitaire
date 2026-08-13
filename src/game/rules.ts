@@ -8,7 +8,6 @@ import {
   STOCK_OF_FREECELL,
   type Card,
   type CoreState,
-  type DealPileId,
   type FoundationDescId,
   type FreeCellId,
   type GameState,
@@ -360,21 +359,26 @@ function scoreForMove(from: PositionId, to: PositionId, cleared: boolean): numbe
 
 // ---------- Acciones de alto nivel ----------
 
-/** Intenta auto-promover una carta del top de `from` a la mejor fundación posible. */
+/**
+ * Promueve la carta superior de `from` a la primera fundación donde quepa.
+ *
+ * **Nunca se dispara sola.** Sólo la invoca un toque/clic explícito del jugador
+ * sobre la carta (ver `onTap` en `useDragDrop`). Esa distinción es justamente lo
+ * que se pidió al retirar la promoción automática: molestaba que las cartas
+ * subieran por su cuenta —un As saliendo del reparto cerraba un palo que quizá
+ * interesaba conservar—, no que subieran cuando se les manda.
+ *
+ * Por eso ya no hay excepciones por origen ni por rango: si el jugador toca una
+ * carta, quiere moverla. El arrastre sigue disponible para elegir destino cuando
+ * hay más de uno posible, y Deshacer cubre el toque accidental.
+ *
+ * Orden de preferencia: fundaciones descendentes I-IV y después la ascendente X.
+ */
 export function autoPromote(state: CoreState, from: PositionId): { state: CoreState; moved: boolean } {
   const card = topOf(state, from);
   if (!card || !card.faceUp || !isValidSource(from)) return { state, moved: false };
-  // Las pilas de reparto 1-4 sólo se mueven por arrastre explícito; el clic
-  // no auto-promueve (evita promociones accidentales en pantalla táctil).
-  if (DEAL_PILES.includes(from as DealPileId)) return { state, moved: false };
-  const isStock = STOCKS.includes(from as StockId);
   const candidates: PositionId[] = [...FOUNDATION_DESC, "X"];
   for (const dest of candidates) {
-    // Un Rey en A/B/C/D no se auto-coloca en una fundación descendente vacía:
-    // esa decisión estratégica corresponde siempre al jugador.
-    if (isStock && isDescFoundation(dest) && card.rank === 13 && topOf(state, dest) === null) {
-      continue;
-    }
     if (canPlace(card, dest, topOf(state, dest))) {
       const result = chainMoveToFoundation(state, from, dest);
       return { state: result.state, moved: true };

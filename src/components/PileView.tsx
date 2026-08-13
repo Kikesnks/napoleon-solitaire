@@ -30,9 +30,13 @@ interface Props {
   isDropTarget?: boolean;
   /** Visible cuando la posición está vacía: símbolo guía. */
   emptyGlyph?: string;
-  /** Top draggable handlers. */
+  /**
+   * Interacción con la carta superior. Arrastre y toque se resuelven ambos
+   * desde aquí: `useDragDrop` distingue uno de otro por la distancia recorrida
+   * entre pointerdown y pointerup, así que no hace falta un `onClick` aparte
+   * (que además se dispararía al final de los arrastres fallidos).
+   */
   onPointerDownTop?: (e: React.PointerEvent) => void;
-  onClickTop?: () => void;
   /** Para que el contenedor mismo sea drop target cuando está vacío. */
   isPlayableEmpty?: boolean;
   /** Oculta la carta superior (en uso por overlay de drag). */
@@ -52,7 +56,6 @@ export function PileView({
   isDropTarget,
   emptyGlyph,
   onPointerDownTop,
-  onClickTop,
   isPlayableEmpty,
   hideTop,
   onClickPile,
@@ -82,7 +85,6 @@ export function PileView({
             <CardView
               card={top}
               onPointerDown={top.faceUp ? onPointerDownTop : undefined}
-              onClick={top.faceUp ? onClickTop : undefined}
               inert={!top.faceUp || hideTop}
             />
             {hideTop && <div className="pile__hidden-overlay" data-drop-target={id} />}

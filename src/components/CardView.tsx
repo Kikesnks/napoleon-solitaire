@@ -27,7 +27,6 @@ interface Props {
   width?: number;
   height?: number;
   onPointerDown?: (e: React.PointerEvent) => void;
-  onClick?: () => void;
   /** Hace la carta inerte a interacción (no top de pila). */
   inert?: boolean;
 }
@@ -40,7 +39,6 @@ export const CardView = memo(function CardView({
   width,
   height,
   onPointerDown,
-  onClick,
   inert = false
 }: Props) {
   const classes = ["card"];
@@ -78,7 +76,6 @@ export const CardView = memo(function CardView({
       className={classes.join(" ")}
       style={style}
       onPointerDown={inert ? undefined : onPointerDown}
-      onClick={inert ? undefined : onClick}
       role={inert ? undefined : "button"}
       aria-label={`${rank} de ${card.suit}`}
     >

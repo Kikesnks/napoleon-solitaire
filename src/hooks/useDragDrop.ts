@@ -8,8 +8,19 @@ import type { PositionId } from "../game";
  * Flujo:
  *   1) onPointerDown sobre la carta superior de un origen → guardamos origen.
  *   2) onPointerMove → trackeamos posición y resaltamos posibles destinos.
- *   3) onPointerUp → si soltamos sobre un drop target válido, callback.
+ *   3) onPointerUp → si soltamos sobre un drop target válido, callback `onDrop`.
+ *      Si el puntero apenas se movió y no había destino, es un TOQUE: `onTap`.
+ *
+ * El toque se detecta aquí y no con un `onClick` en la carta a propósito. El
+ * navegador dispara `click` también al final de un arrastre fallido (pointer
+ * capture manda el evento a la carta de origen aunque el dedo termine lejos),
+ * así que promover desde `onClick` movería cartas tras cada arrastre que no
+ * llegara a destino. Con el umbral de distancia, arrastrar y tocar quedan
+ * separados de verdad.
  */
+
+/** Movimiento máximo (px) para que soltar cuente como toque y no como arrastre. */
+const TAP_SLOP_PX = 8;
 
 export interface DragState {
   from: PositionId;
@@ -29,22 +40,28 @@ export interface DragHandlers {
 
 interface Options {
   onDrop(from: PositionId, to: PositionId): void;
+  /** Toque sin arrastre sobre la carta superior de `from`. */
+  onTap(from: PositionId): void;
   isLegalTarget(from: PositionId, to: PositionId): boolean;
 }
 
-export function useDragDrop({ onDrop, isLegalTarget }: Options): DragHandlers {
+export function useDragDrop({ onDrop, onTap, isLegalTarget }: Options): DragHandlers {
   const [drag, setDrag] = useState<DragState | null>(null);
   const [hoveredTarget, setHoveredTarget] = useState<PositionId | null>(null);
   // Refs para evitar closures stale en los handlers globales.
   const dragRef = useRef<DragState | null>(null);
+  const originRef = useRef<{ x: number; y: number } | null>(null);
   const isLegalRef = useRef(isLegalTarget);
   const onDropRef = useRef(onDrop);
+  const onTapRef = useRef(onTap);
   isLegalRef.current = isLegalTarget;
   onDropRef.current = onDrop;
+  onTapRef.current = onTap;
   dragRef.current = drag;
 
   const beginDrag = useCallback((e: React.PointerEvent, from: PositionId) => {
     if (e.button !== undefined && e.button !== 0) return;
+    originRef.current = { x: e.clientX, y: e.clientY };
     const target = e.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     // Las pilas B/B1/D/D1 muestran sus cartas rotadas 90°. El bounding rect
@@ -107,8 +124,18 @@ export function useDragDrop({ onDrop, isLegalTarget }: Options): DragHandlers {
             break;
           }
         }
-        if (target) onDropRef.current(current.from, target);
+        if (target) {
+          onDropRef.current(current.from, target);
+        } else {
+          // Sin destino: puede ser un arrastre que no llegó a ninguna parte o
+          // un toque limpio. Los separa la distancia recorrida.
+          const origin = originRef.current;
+          const dx = origin ? e.clientX - origin.x : Infinity;
+          const dy = origin ? e.clientY - origin.y : Infinity;
+          if (Math.hypot(dx, dy) <= TAP_SLOP_PX) onTapRef.current(current.from);
+        }
       }
+      originRef.current = null;
       dragRef.current = null;
       setDrag(null);
       setHoveredTarget(null);

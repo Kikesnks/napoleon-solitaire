@@ -7,7 +7,10 @@ import { Instructions } from "./components/Instructions";
 import { LeaderboardDialog } from "./components/LeaderboardDialog";
 import { LeaderboardViewer } from "./components/LeaderboardViewer";
 import { NameEntryDialog } from "./components/NameEntryDialog";
+import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { SuitSelectDialog } from "./components/SuitSelectDialog";
+import { readPref, writePref } from "./core/storage/prefs";
+import { useFitBoard } from "./hooks/useFitBoard";
 import { useGameEngine } from "./hooks/useGameEngine";
 import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
@@ -18,17 +21,27 @@ import { qualifies, submitScore, type LeaderboardCategory, type LeaderboardEntry
 /** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
 const DEAL_ANIMATION_MS = 1400;
 
+/** Dificultad elegida la última vez. Preferencia funcional, no rastreo. */
+const SUIT_MODE_KEY = "solnap.suitMode";
+
+function readSuitMode(): SuitMode {
+  return readPref(SUIT_MODE_KEY) === "2" ? 2 : 4;
+}
+
 export default function App() {
-  const engine = useGameEngine();
+  const { firstRun, markSeen } = useFirstRun();
+  const engine = useGameEngine(undefined, readSuitMode());
   const { state } = engine;
   const [lang, setLang] = useLanguage();
-  const { firstRun, markSeen } = useFirstRun();
 
   /**
-   * showRules: SIEMPRE true al cargar la página (también en F5, no solo en
-   * el primer arranque). Desde el HUD también se puede reabrir.
+   * showRules: sólo en la PRIMERA visita. En las siguientes el jugador cae
+   * directo en el tablero — un muro de texto en cada carga es la fuga de
+   * retención más tonta que puede tener un juego de portal, y la retención es
+   * justo lo que decide si CrazyGames nos invita a monetizar. Siguen accesibles
+   * en todo momento con el botón 📖 del HUD.
    */
-  const [showRules, setShowRules] = useState<boolean>(true);
+  const [showRules, setShowRules] = useState<boolean>(firstRun);
 
   /**
    * rulesOnLoad: true mientras las reglas que se ven forman parte del flujo
@@ -36,7 +49,7 @@ export default function App() {
    * la etiqueta del botón ("Empezar a jugar" vs "Cerrar") y si el siguiente
    * paso tras cerrarlas es el selector de palos.
    */
-  const [rulesOnLoad, setRulesOnLoad] = useState<boolean>(true);
+  const [rulesOnLoad, setRulesOnLoad] = useState<boolean>(firstRun);
 
   /**
    * pendingSuitSource: cuando está establecido, muestra el selector de palos.
@@ -48,7 +61,7 @@ export default function App() {
    */
   const [pendingSuitSource, setPendingSuitSource] = useState<
     "hud" | "gameover" | "firstrun" | null
-  >("firstrun");
+  >(firstRun ? "firstrun" : null);
 
   // ── Liga de Campeones ─────────────────────────────────────────────────────
   // El flujo es asíncrono porque la persistencia es en servidor (Supabase):
@@ -64,6 +77,7 @@ export default function App() {
     | { step: "error"; category: LeaderboardCategory; score: number; suitMode: SuitMode; message: string };
 
   const [lbPhase, setLbPhase] = useState<LbPhase>({ step: "idle" });
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showLbViewer, setShowLbViewer] = useState(false);
 
   // Detecta el fin de partida una sola vez por juego.
@@ -82,10 +96,15 @@ export default function App() {
 
     const category: LeaderboardCategory = cur === "won" ? "won" : "lost";
     let cancelled = false;
-    void qualifies(category, state.score).then((ok) => {
-      if (cancelled || !ok) return;
-      setLbPhase({ step: "name-entry", category, score: state.score, suitMode: state.suitMode });
-    });
+    void qualifies(category, state.score)
+      .then((ok) => {
+        if (cancelled || !ok) return;
+        setLbPhase({ step: "name-entry", category, score: state.score, suitMode: state.suitMode });
+      })
+      // `qualifies` ya absorbe los fallos, pero sin este catch un rechazo
+      // inesperado quedaría como "unhandled rejection" en la consola — y en la
+      // revisión de calidad de un portal eso es justo lo que no queremos.
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -138,8 +157,20 @@ export default function App() {
    * jugador lo cierre antes de animar.
    */
   const [dealing, setDealing] = useState<boolean>(false);
+  /**
+   * Última partida ya animada. Sin esto, el efecto se relanzaba cada vez que
+   * se cerraba el modal de reglas y las cartas volvían a "repartirse" en
+   * pantalla: quien consultaba las reglas a mitad de partida creía que había
+   * perdido lo jugado (la partida seguía intacta, era sólo la animación).
+   */
+  const animatedForRef = useRef<number | null>(null);
   useEffect(() => {
     if (showRules || pendingSuitSource !== null) return;
+    if (animatedForRef.current === state.startedAt) return;
+    animatedForRef.current = state.startedAt;
+    // Partida retomada tras recargar: el tablero ya está a medias, repartir
+    // otra vez sería mentir sobre lo que está pasando.
+    if (state.moves > 0) return;
     setDealing(true);
     const t = window.setTimeout(() => setDealing(false), DEAL_ANIMATION_MS);
     return () => window.clearTimeout(t);
@@ -151,6 +182,16 @@ export default function App() {
   // cerrar instrucciones. Se desactivan cuando el modal está abierto (excepto Escape).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // La política se abre ENCIMA de las reglas, así que se cierra primero.
+      // Sin esto, Escape cerraba las reglas de debajo y dejaba la política
+      // colgada en pantalla, sólo cerrable con su botón.
+      if (showPrivacy) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setShowPrivacy(false);
+        }
+        return;
+      }
       if (showRules) {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -182,7 +223,7 @@ export default function App() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, showRules, pendingSuitSource, lbPhase.step, showLbViewer]);
+  }, [engine, showRules, showPrivacy, pendingSuitSource, lbPhase.step, showLbViewer]);
 
   const dismissRules = () => {
     if (firstRun) markSeen();
@@ -195,12 +236,17 @@ export default function App() {
 
   const handleSuitSelect = (mode: SuitMode) => {
     setPendingSuitSource(null);
+    writePref(SUIT_MODE_KEY, String(mode));
     engine.newGame(undefined, mode);
   };
 
   const handleSuitCancel = () => {
     setPendingSuitSource(null);
   };
+
+  // El tablero se escala al hueco medido, no al estimado — ver `useFitBoard`.
+  const mainRef = useRef<HTMLElement>(null);
+  useFitBoard(mainRef);
 
   return (
     <div className="app">
@@ -216,13 +262,15 @@ export default function App() {
         onNewGame={() => setPendingSuitSource("hud")}
         onShowRules={() => setShowRules(true)}
         onShowLeaderboard={() => setShowLbViewer(true)}
+        onShowPrivacy={() => setShowPrivacy(true)}
       />
-      <main className="app__main">
+      <main className="app__main" ref={mainRef}>
         <Board
           state={state}
           dealing={dealing}
           onMove={engine.move}
           onDeal={engine.deal}
+          onPromote={engine.autoPromote}
         />
       </main>
       {state.status === "won" && <Confetti />}
@@ -239,6 +287,7 @@ export default function App() {
           onLangChange={setLang}
           onDismiss={dismissRules}
           showPlayButton={rulesOnLoad}
+          onShowPrivacy={() => setShowPrivacy(true)}
         />
       )}
       {!showRules && pendingSuitSource !== null && (
@@ -293,6 +342,7 @@ export default function App() {
           onAccept={handleLbAccept}
         />
       )}
+      {showPrivacy && <PrivacyPolicy lang={lang} onClose={() => setShowPrivacy(false)} />}
       {showLbViewer && (
         <LeaderboardViewer lang={lang} onClose={() => setShowLbViewer(false)} />
       )}

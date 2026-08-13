@@ -1,9 +1,22 @@
-// Diccionario de cadenas de UI en español e inglés. La pantalla de
-// instrucciones (con su toggle ES/EN) escribe en localStorage, y el resto
-// del HUD/overlay leen de aquí. La regla del juego pura no toca i18n —
-// vive sólo en la capa de presentación.
+// Diccionario de cadenas de UI. La pantalla de instrucciones (con su selector
+// de idioma) escribe en localStorage, y el resto del HUD/overlay leen de aquí.
+// La regla del juego pura no toca i18n — vive sólo en la capa de presentación.
 
-export type Lang = "es" | "en";
+export type Lang = "es" | "en" | "fr";
+
+/**
+ * Cómo se presenta cada idioma en el selector: bandera **y** nombre en su
+ * propia lengua. La bandera sola sería ambigua —representa países, no
+ * idiomas— y dejaría fuera a media Latinoamérica y a la África francófona,
+ * que son justo parte de nuestro público en los portales.
+ */
+export const LANG_LABELS: Record<Lang, { flag: string; name: string }> = {
+  es: { flag: "🇪🇸", name: "Español" },
+  en: { flag: "🇬🇧", name: "English" },
+  fr: { flag: "🇫🇷", name: "Français" }
+};
+
+export const LANG_ORDER: Lang[] = ["es", "en", "fr"];
 
 export interface UIStrings {
   // HUD
@@ -12,6 +25,16 @@ export interface UIStrings {
   round: string;
   moves: string;
   monton: string;
+  /**
+   * Abreviaturas de los cinco datos, sólo para el HUD en pantallas estrechas.
+   * Con los nombres completos las cinco columnas no caben en un móvil de 360px
+   * y los textos se montaban unos encima de otros.
+   */
+  timeShort: string;
+  scoreShort: string;
+  roundShort: string;
+  movesShort: string;
+  montonShort: string;
   undo: string;
   newGame: string;
   rules: string;
@@ -19,6 +42,11 @@ export interface UIStrings {
   rulesTitle: string;
   play: string;
   close: string;
+  // Privacidad (principio rector nº 3: es un argumento de venta, va visible)
+  privacyBadge: string;
+  privacyTitle: string;
+  /** Etiqueta corta para el botón del HUD: el título completo no cabe. */
+  privacyShort: string;
   // Overlay fin de partida
   won: string;
   lost: string;
@@ -62,12 +90,20 @@ export const STRINGS: Record<Lang, UIStrings> = {
     round: "Ronda",
     moves: "Mov.",
     monton: "Montón",
+    timeShort: "Tpo",
+    scoreShort: "Pts",
+    roundShort: "Rnd",
+    movesShort: "Mov",
+    montonShort: "Mont",
     undo: "Deshacer",
     newGame: "Nueva",
     rules: "Reglas",
     rulesTitle: "Reglas del Solitario Napoleón",
     play: "Empezar a jugar",
     close: "Cerrar",
+    privacyBadge: "Cero rastreo · Sin cuentas · Solo cartas",
+    privacyTitle: "Política de privacidad",
+    privacyShort: "Privacidad",
     won: "¡Has ganado!",
     lost: "Fin de la partida",
     wonMessage: "Solitario completado.",
@@ -106,12 +142,22 @@ export const STRINGS: Record<Lang, UIStrings> = {
     round: "Round",
     moves: "Moves",
     monton: "Stock",
+    timeShort: "Time",
+    // "PTS" y no "SCR": es la abreviatura de marcador de toda la vida en inglés
+    // y se entiende sin pensar; "SCR" no la usa nadie y se lee como un error.
+    scoreShort: "Pts",
+    roundShort: "Rnd",
+    movesShort: "Mov",
+    montonShort: "Stock",
     undo: "Undo",
     newGame: "New",
     rules: "Rules",
     rulesTitle: "Napoleon Solitaire — Rules",
     play: "Start playing",
     close: "Close",
+    privacyBadge: "No tracking · No accounts · Just cards",
+    privacyTitle: "Privacy policy",
+    privacyShort: "Privacy",
     won: "You won!",
     lost: "Game over",
     wonMessage: "Solitaire complete.",
@@ -143,5 +189,57 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lbError: "Could not connect to the server",
     lbSubmitting: "Submitting score…",
     lbRetry: "Retry"
+  },
+  fr: {
+    time: "Temps",
+    score: "Points",
+    round: "Tour",
+    moves: "Coups",
+    monton: "Talon",
+    timeShort: "Tps",
+    scoreShort: "Pts",
+    roundShort: "Tour",
+    movesShort: "Cps",
+    montonShort: "Talon",
+    undo: "Annuler",
+    newGame: "Nouvelle",
+    rules: "Règles",
+    rulesTitle: "Réussite Napoléon — Règles",
+    play: "Commencer à jouer",
+    close: "Fermer",
+    privacyBadge: "Aucun traçage · Aucun compte · Juste des cartes",
+    privacyTitle: "Politique de confidentialité",
+    privacyShort: "Confidentialité",
+    won: "Vous avez gagné !",
+    lost: "Partie terminée",
+    wonMessage: "Réussite complétée.",
+    lostMessage: "Le talon est épuisé sans avoir pu ranger toutes les cartes.",
+    playAgain: "Rejouer",
+    chooseSuits: "Avec combien de couleurs ?",
+    twoSuits: "2 couleurs",
+    fourSuits: "4 couleurs",
+    twoSuitsDesc: "Une couleur rouge et une noire (plus facile)",
+    fourSuitsDesc: "Les quatre couleurs — version originale",
+    cancel: "Annuler",
+    leaderboard: "LIGUE DES CHAMPIONS",
+    lbTabWon: "Gagnées",
+    lbTabLost: "Non gagnées",
+    lbWonTitle: "LIGUE DES CHAMPIONS — Victoires",
+    lbLostTitle: "LIGUE DES CHAMPIONS — Meilleures parties",
+    lbEnterTitle: "Vous entrez dans la LIGUE DES CHAMPIONS !",
+    lbEnterPrompt: "Saisissez votre nom pour enregistrer votre score",
+    lbNamePlaceholder: "Votre nom",
+    lbSave: "Enregistrer",
+    lbAccept: "Valider",
+    lbColPlayer: "Joueur",
+    lbColScore: "Points",
+    lbColDate: "Date",
+    lbColSuits: "Couleurs",
+    lbEmpty: "Aucune partie enregistrée pour le moment",
+    lbYourScore: "Votre score",
+    lbLoading: "Chargement du classement…",
+    lbError: "Impossible de se connecter au serveur",
+    lbSubmitting: "Envoi du score…",
+    lbRetry: "Réessayer"
   }
 };

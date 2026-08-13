@@ -18,6 +18,8 @@ interface Props {
   dealing?: boolean;
   onMove(from: PositionId, to: PositionId): void;
   onDeal(): void;
+  /** Toque/clic sobre una carta: la sube a una fundación si cabe en alguna. */
+  onPromote(from: PositionId): void;
 }
 
 /**
@@ -34,7 +36,7 @@ interface Props {
  * apiladas equivalgan en altura a una vertical). El layout entero usa CSS Grid
  * con áreas con nombre — ver `index.css` sección "Tablero - layout en cruz".
  */
-export function Board({ state, dealing = false, onMove, onDeal }: Props) {
+export function Board({ state, dealing = false, onMove, onDeal, onPromote }: Props) {
   const isLegalTarget = useCallback(
     (from: PositionId, to: PositionId) => {
       if (from === to) return false;
@@ -48,6 +50,7 @@ export function Board({ state, dealing = false, onMove, onDeal }: Props) {
 
   const { drag, hoveredTarget, beginDrag } = useDragDrop({
     onDrop: onMove,
+    onTap: onPromote,
     isLegalTarget
   });
 

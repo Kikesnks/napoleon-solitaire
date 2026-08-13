@@ -8,16 +8,34 @@ function readStoredLang(): Lang | null {
   if (typeof window === "undefined") return null;
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored === "es" || stored === "en" ? stored : null;
+    return stored === "es" || stored === "en" || stored === "fr" ? stored : null;
   } catch {
     return null;
   }
 }
 
+/**
+ * Idioma inicial: se sirve el idioma del navegador **si lo tenemos traducido**
+ * (español, francés) y, si no, **inglés**. En los portales (CrazyGames,
+ * GameDistribution, Y8) el público es mundial: mandar a español a un jugador
+ * japonés o alemán era perder jugadores en el primer segundo. El inglés es el
+ * salvavidas mientras no haya más traducciones — ver `informe_asia_1.md`.
+ */
 function detectBrowserLang(): Lang {
-  if (typeof navigator === "undefined") return "es";
-  const code = (navigator.language || "").toLowerCase();
-  return code.startsWith("en") ? "en" : "es";
+  if (typeof navigator === "undefined") return "en";
+  const codes: string[] = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language || ""
+  ].map((c) => c.toLowerCase());
+
+  // Se respeta el ORDEN de preferencia del navegador: si alguien tiene
+  // francés antes que español, recibe francés.
+  for (const code of codes) {
+    if (code.startsWith("es")) return "es";
+    if (code.startsWith("fr")) return "fr";
+    if (code.startsWith("en")) return "en";
+  }
+  return "en";
 }
 
 /**

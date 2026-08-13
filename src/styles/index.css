@@ -88,9 +88,15 @@
   --max-w-from-w: calc((var(--avail-w) - 5 * var(--gap)) / 6.45);
 
   /* Fallback estático para navegadores sin clamp/min anidado (iOS < 13.4
-     y similares). Después declaramos la versión moderna que sobrescribe. */
+     y similares). Después declaramos la versión moderna que sobrescribe.
+
+     El mínimo es 26px y no 34px: `clamp` respeta el suelo aunque el hueco sea
+     menor, así que un suelo alto no agranda las cartas, sólo hace que el
+     tablero sobresalga y `.app__main` (overflow: hidden, sin scroll) recorte
+     justamente la última fila. Vale más una carta pequeña que una invisible.
+     `--avail-w`/`--avail-h` los mide `useFitBoard` en tiempo real. */
   --card-w: 56px;
-  --card-w: clamp(34px, min(var(--max-w-from-h), var(--max-w-from-w)), 92px);
+  --card-w: clamp(26px, min(var(--max-w-from-h), var(--max-w-from-w)), 92px);
   --card-h: calc(var(--card-w) * 1.45);
 
   /* Opt-out del Auto-Dark del Android Chrome. Con `only light` el motor
@@ -177,6 +183,10 @@ button {
   flex-direction: column;
   line-height: 1.1;
   min-width: 38px;
+  /* Red de seguridad: si algún día el contenido no cabe, se corta por el borde
+     de su celda en vez de pintarse encima del dato de al lado. Un marcador
+     recortado se entiende; dos textos superpuestos, no. */
+  overflow: hidden;
 }
 
 .hud__stat-label {
@@ -184,12 +194,19 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.75;
+  white-space: nowrap;
+}
+
+/* Nombre completo por defecto; la abreviatura sólo entra en pantalla estrecha. */
+.hud__stat-label--short {
+  display: none;
 }
 
 .hud__stat-value {
   font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .hud__actions {
@@ -716,15 +733,34 @@ button {
 }
 
 .instructions__lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border: 0;
   background: transparent;
-  padding: 4px 12px;
+  padding: 4px 10px;
   font-size: 12px;
   font-weight: 700;
   color: #555;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+}
+
+.instructions__lang-flag {
+  /* Las banderas son emoji: en Windows salen como siglas (ES/GB/FR), y aun
+     así cumplen su papel de pista visual rápida. El nombre del idioma
+     al lado es lo que quita toda ambigüedad. */
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* En pantallas estrechas se dejan sólo las banderas para no comerse la
+   cabecera; el nombre sigue en el `title` y en el `aria-label`. */
+@media (max-width: 430px) {
+  .instructions__lang-name {
+    display: none;
+  }
 }
 
 .instructions__lang-btn.is-active {
@@ -784,8 +820,26 @@ button {
   padding: 12px 18px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   background: #fafaf6;
+}
+
+/* Hereda de `.hud__btn`, pensado para la barra oscura del juego: sobre el pie
+   claro de las reglas su color se quedaba en un amarillo ilegible. Aquí manda
+   el fondo claro. Y no es un botón cualquiera: si no se lee, la política —que
+   es nuestro argumento de venta— pasa desapercibida. */
+.instructions__privacy-link {
+  font-size: 12px;
+  padding: 6px 12px;
+  color: #0b3d1f;
+  background: #ffffff;
+  border-color: #c7c1b3;
+}
+
+.instructions__privacy-link:hover {
+  background: #f0ece0;
 }
 
 .instructions__cta {
@@ -844,6 +898,15 @@ button {
 .diagram__grid > .diagram__slot[data-pos="X"] { grid-area: fX; }
 .diagram__grid > .diagram__slot[data-pos="C"] { grid-area: fC; }
 .diagram__grid > .diagram__slot[data-pos="C1"] { grid-area: fC1; }
+
+/* La columna 3 mide `--d-card-h` (el ancho de una carta tumbada), más que las
+   otras cinco. Los slots llevan ancho fijo, así que sin esto X se pegaba al
+   borde izquierdo de su celda y quedaba descuadrada respecto a B/B1 y D/D1,
+   que sí se centran por ser flex. En el tablero de verdad no pasa porque la
+   carta va centrada dentro de `.pile`. */
+.diagram__grid > .diagram__slot {
+  justify-self: center;
+}
 
 .diagram__substack {
   display: flex;
@@ -1491,4 +1554,258 @@ button {
   .confetti {
     display: none;
   }
+}
+
+/* ── Nota de privacidad ────────────────────────────────────────────────────
+   Principio rector nº 3: cero recopilación de datos. Va dentro de las reglas,
+   visible, porque es un argumento de venta y no un trámite. */
+.privacy-note {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(11, 61, 31, 0.25);
+  border-radius: 10px;
+  background: rgba(11, 61, 31, 0.06);
+}
+
+.privacy-note__badge {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0b3d1f;
+}
+
+.privacy-note__body {
+  margin: 0;
+  font-size: 0.92em;
+  line-height: 1.45;
+}
+
+
+/* ---------- Política de privacidad (diálogo dentro del juego) ---------- */
+.privacy {
+  z-index: 1010; /* por encima de las reglas (1004) y del resto de overlays */
+}
+
+.privacy__panel {
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  width: min(92vw, 640px);
+  max-height: 88vh;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  /* `.overlay__panel` es oscuro (#1a1a1a) porque lo usa el fin de partida.
+     Aqui el contenido es un texto largo para leer, asi que va sobre claro
+     como la pantalla de reglas: texto oscuro sobre fondo oscuro era
+     ilegible. */
+  background: #fdfaf3;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #2a2a2a;
+}
+
+.privacy__header {
+  padding: 14px 22px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fafaf6;
+}
+
+.privacy__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0b3d1f;
+}
+
+.privacy__body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 22px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #2a2a2a;
+}
+
+.privacy__lead {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(11, 61, 31, 0.06);
+}
+
+.privacy__body h3 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+  color: #0b3d1f;
+}
+
+.privacy__body p {
+  margin: 0 0 8px;
+}
+
+.privacy__body ul {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.privacy__body strong {
+  color: #0b3d1f;
+}
+
+.privacy__footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  background: #fafaf6;
+}
+
+.privacy-note__link {
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9em;
+  font-weight: 700;
+  color: #0b3d1f;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+
+/* ---------- HUD compacto en pantallas estrechas ----------
+   En vertical, los 5 datos se apilaban uno debajo de otro porque los botones
+   con texto no dejaban ancho: la cabecera se comia media pantalla y en
+   horizontal el tablero era casi injugable. Solucion: datos en una sola fila
+   sin envolver y botones reducidos a su icono (el nombre sigue en aria-label
+   y en title, asi que la accesibilidad no se resiente). */
+@media (max-width: 720px) {
+  /* La cabecera pasa a ocupar ~36px en vez de 56: se lo devolvemos al tablero
+     por la variable con la que se calcula el tamano de carta. Sin esto, el
+     hueco ganado se quedaba en negro y las cartas seguian igual de pequenas. */
+  :root {
+    --hud-h: 40px;
+  }
+
+  .hud {
+    gap: 6px;
+    padding: 4px 8px;
+  }
+
+  .hud__stats {
+    flex-wrap: nowrap;
+    gap: 7px;
+    overflow: hidden;
+  }
+
+  /* `min-width: 0` deja que las celdas se encojan por debajo de su contenido.
+     Es lo que hace falta para que quepan cinco, pero sin el `overflow: hidden`
+     de arriba el texto se salía de su caja y se pintaba sobre el vecino:
+     "TIEMPO PUNTOS RONDA" acababa siendo "TIEMPOPUNTOSRONDA". */
+  .hud__stat {
+    min-width: 0;
+  }
+
+  /* Y la otra mitad del arreglo: con los nombres completos no caben cinco
+     columnas en 360px por mucho que se encojan, así que aquí se usan las
+     abreviaturas. Recortar no basta; hay que necesitar menos sitio. */
+  .hud__stat-label--long {
+    display: none;
+  }
+
+  .hud__stat-label--short {
+    display: inline;
+  }
+
+  .hud__stat-label {
+    font-size: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .hud__stat-value {
+    font-size: 12px;
+  }
+
+  .hud__actions {
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .hud__btn-text {
+    display: none;
+  }
+
+  .hud__btn {
+    padding: 6px 9px;
+    font-size: 15px;
+    line-height: 1;
+  }
+}
+
+/* Móviles estrechos de verdad (360px y por debajo). Aquí los cinco botones se
+   comen casi la mitad de la barra, así que se les recorta el acolchado para
+   devolverle ese ancho al marcador. */
+@media (max-width: 430px) {
+  .hud__stats {
+    gap: 5px;
+  }
+
+  .hud__actions {
+    gap: 3px;
+  }
+
+  .hud__btn {
+    padding: 5px 7px;
+    font-size: 14px;
+  }
+}
+
+/* El tramo más apretado que soportamos: 320px (iPhone SE de primera hornada y
+   Android antiguos). Cinco datos y cinco botones no caben ahí sin bajar un
+   punto la tipografía del marcador. */
+@media (max-width: 350px) {
+  .hud__stats {
+    gap: 4px;
+  }
+
+  .hud__stat-label {
+    font-size: 7px;
+  }
+
+  .hud__stat-value {
+    font-size: 11px;
+  }
+
+  .hud__btn {
+    padding: 5px 6px;
+    font-size: 13px;
+  }
+}
+
+/* En apaisado de movil la altura es el recurso escaso: cabecera aun mas fina. */
+@media (max-height: 480px) and (orientation: landscape) {
+  :root {
+    --hud-h: 32px;
+  }
+
+  .hud {
+    padding: 2px 8px;
+    min-height: 0;
+  }
+
+  .hud__stat-label {
+    font-size: 7px;
+  }
+
+  .hud__stat-value {
+    font-size: 11px;
+  }
+
+  .hud__btn {
+    padding: 4px 8px;
+  }
+}
+
+.hud__btn-icon {
+  font-size: 1em;
 }

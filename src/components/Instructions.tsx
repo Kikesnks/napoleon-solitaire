@@ -1,5 +1,5 @@
 import type { Lang } from "../i18n/strings";
-import { STRINGS } from "../i18n/strings";
+import { LANG_LABELS, LANG_ORDER, STRINGS } from "../i18n/strings";
 
 /**
  * Diagrama del tablero a escala reducida. Mismo layout en cruz que la página 9
@@ -72,9 +72,18 @@ interface Props {
    *  mostramos "Empezar a jugar". Si es false (consulta desde el HUD durante
    *  la partida), mostramos "Cerrar". */
   showPlayButton: boolean;
+  /** Abre la politica de privacidad, que vive en App para poder abrirse
+   *  tambien desde el HUD. */
+  onShowPrivacy(): void;
 }
 
-export function Instructions({ lang, onLangChange, onDismiss, showPlayButton }: Props) {
+export function Instructions({
+  lang,
+  onLangChange,
+  onDismiss,
+  showPlayButton,
+  onShowPrivacy
+}: Props) {
   const t = STRINGS[lang];
   return (
     <div className="instructions" role="dialog" aria-modal="true" aria-labelledby="rules-title">
@@ -84,30 +93,43 @@ export function Instructions({ lang, onLangChange, onDismiss, showPlayButton }: 
             {t.rulesTitle}
           </h2>
           <div className="instructions__lang" role="group" aria-label="Language">
-            <button
-              type="button"
-              className={`instructions__lang-btn ${lang === "es" ? "is-active" : ""}`}
-              onClick={() => onLangChange("es")}
-              aria-pressed={lang === "es"}
-            >
-              ES
-            </button>
-            <button
-              type="button"
-              className={`instructions__lang-btn ${lang === "en" ? "is-active" : ""}`}
-              onClick={() => onLangChange("en")}
-              aria-pressed={lang === "en"}
-            >
-              EN
-            </button>
+            {LANG_ORDER.map((code) => {
+              const { flag, name } = LANG_LABELS[code];
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  className={`instructions__lang-btn ${lang === code ? "is-active" : ""}`}
+                  onClick={() => onLangChange(code)}
+                  aria-pressed={lang === code}
+                  lang={code}
+                  title={name}
+                >
+                  <span className="instructions__lang-flag" aria-hidden="true">
+                    {flag}
+                  </span>
+                  <span className="instructions__lang-name">{name}</span>
+                </button>
+              );
+            })}
           </div>
         </header>
 
         <div className="instructions__body">
-          {lang === "es" ? <RulesES /> : <RulesEN />}
+          {/* Arriba del todo, no al final del scroll: si el jugador tiene que
+              buscarlo, deja de ser un argumento de venta. */}
+          <PrivacyNote lang={lang} onOpenPrivacy={onShowPrivacy} />
+          {lang === "es" ? <RulesES /> : lang === "fr" ? <RulesFR /> : <RulesEN />}
         </div>
 
         <footer className="instructions__footer">
+          <button
+            type="button"
+            className="hud__btn instructions__privacy-link"
+            onClick={onShowPrivacy}
+          >
+            🔒 {t.privacyTitle}
+          </button>
           <button
             type="button"
             className="hud__btn hud__btn--primary instructions__cta"
@@ -118,6 +140,50 @@ export function Instructions({ lang, onLangChange, onDismiss, showPlayButton }: 
         </footer>
       </div>
     </div>
+  );
+}
+
+/**
+ * Nota de privacidad. No es un trámite legal escondido en la letra pequeña: es
+ * nuestro diferenciador y va donde se ve — principio rector nº 3 del plan de
+ * monetización. Se redacta SIEMPRE referida al juego, nunca a la página que lo
+ * aloja: en un portal, los anuncios y las cookies de alrededor son suyos.
+ */
+function PrivacyNote({ lang, onOpenPrivacy }: { lang: Lang; onOpenPrivacy(): void }) {
+  const t = STRINGS[lang];
+  return (
+    <section className="privacy-note">
+      <p className="privacy-note__badge">🔒 {t.privacyBadge}</p>
+      <p className="privacy-note__body">
+        {lang === "es" && (
+          <>
+            Este juego <strong>no recopila ninguna información sobre ti</strong>. No hay cuentas,
+            ni registro, ni correo, ni perfilado, ni venta de datos. Lo único que se guarda es lo
+            imprescindible para jugar —tu idioma, la dificultad elegida y tus mejores partidas— y{" "}
+            <strong>se queda en tu dispositivo</strong>.
+          </>
+        )}
+        {lang === "en" && (
+          <>
+            This game <strong>collects no information about you</strong>. No accounts, no sign-up,
+            no email, no profiling, no data selling. The only things stored are what the game needs
+            to work — your language, your chosen difficulty and your best games — and{" "}
+            <strong>they stay on your device</strong>.
+          </>
+        )}
+        {lang === "fr" && (
+          <>
+            Ce jeu <strong>ne collecte aucune information sur vous</strong>. Ni compte, ni
+            inscription, ni e-mail, ni profilage, ni revente de données. Seul l'indispensable est
+            conservé —votre langue, la difficulté choisie et vos meilleures parties— et{" "}
+            <strong>cela reste sur votre appareil</strong>.
+          </>
+        )}
+      </p>
+      <button type="button" className="privacy-note__link" onClick={onOpenPrivacy}>
+        {t.privacyTitle} →
+      </button>
+    </section>
   );
 }
 
@@ -229,6 +295,11 @@ function RulesES() {
           <li>
             <strong>Arrastrar</strong>: la sueltas sobre cualquier fundación o free cell
             válida.
+          </li>
+          <li>
+            <strong>Tocar una carta</strong>: sube a una fundación si encaja en alguna.
+            Nunca sube nada sola: sólo se mueve lo que tocas. Si la carta vale para más
+            de una fundación y quieres elegir, arrástrala.
           </li>
           <li>
             <strong>Tap en el montón</strong>: reparte la siguiente tirada. Cuando está
@@ -359,6 +430,11 @@ function RulesEN() {
             <strong>Drag</strong> a card: drop it on any legal foundation or free cell.
           </li>
           <li>
+            <strong>Tap a card</strong>: it moves up to a foundation if it fits one.
+            Nothing ever moves on its own — only what you tap. If the card fits more than
+            one foundation and you want to choose, drag it instead.
+          </li>
+          <li>
             <strong>Tap on the stock</strong>: deal the next batch. When empty and a
             round remains, gathers the piles and advances.
           </li>
@@ -370,6 +446,145 @@ function RulesEN() {
           </li>
           <li>
             <strong>New button</strong>: start a fresh game with a new deck.
+          </li>
+        </ul>
+      </section>
+    </>
+  );
+}
+
+// ---------- Contenido en francés ----------
+// Terminología de cartomancie francesa: "couleur" = palo, "réussite" = solitario,
+// "talon" = montón, "cases libres" = free cells.
+
+function RulesFR() {
+  return (
+    <>
+      <section>
+        <h3>But du jeu</h3>
+        <p>
+          Ranger les 104 cartes (deux jeux français) en 8 séquences complètes. Chaque
+          séquence se construit sur l'une des positions I, II, III, IV ou X et se
+          retire automatiquement du tableau une fois terminée.
+        </p>
+      </section>
+
+      <section>
+        <h3>Disposition du tableau</h3>
+        <BoardDiagram />
+        <ul>
+          <li>
+            <strong>I, II, III, IV</strong> : fondations descendantes.
+          </li>
+          <li>
+            <strong>X</strong> : fondation ascendante.
+          </li>
+          <li>
+            <strong>A, B, C, D</strong> : piles initiales de 9 cartes, la première
+            retournée face visible.
+          </li>
+          <li>
+            <strong>A1, B1, C1, D1</strong> : cases libres (B1 et D1 sont horizontales).
+          </li>
+          <li>
+            <strong>1, 2, 3, 4</strong> : piles de distribution où tombent les cartes du
+            talon pendant le tour.
+          </li>
+          <li>
+            <strong>M</strong> : talon (les 64 cartes restantes, faces cachées au début).
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Compléter les fondations</h3>
+        <ul>
+          <li>
+            <strong>I, II, III, IV (descendantes)</strong> : commencent par un Roi (K)
+            puis D, V, 10, ..., 2, A — même couleur. Dès que l'As est posé, la pile
+            entière est retirée et la position se libère pour un autre Roi.
+          </li>
+          <li>
+            <strong>X (ascendante)</strong> : commence par un As (A) puis 2, 3, ..., D,
+            R — même couleur. Dès que le Roi est posé, la pile est retirée et la
+            position se libère pour un autre As.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Cases libres A1, B1, C1, D1</h3>
+        <ul>
+          <li>
+            Elles acceptent une carte de la
+            <strong> même couleur, en ordre ascendant</strong> (rang = sommet + 1).
+            Elles servent de réserves ascendantes.
+          </li>
+          <li>
+            Lorsqu'une case se vide, la pile A/B/C/D correspondante la regarnit avec sa
+            carte du dessus et retourne la carte cachée suivante.
+          </li>
+          <li>
+            Quand les 4 cases libres sont vides et qu'il ne reste plus de cartes dans
+            les piles A, B, C et D, plus aucun déplacement vers les cases libres n'est
+            possible.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Distribution du talon par tours</h3>
+        <ul>
+          <li>Tour 1 : donnes de 4 cartes sur les piles 1, 2, 3 et 4.</li>
+          <li>Tour 2 : donnes de 3 cartes sur les piles 1, 2 et 3.</li>
+          <li>Tour 3 : donnes de 2 cartes sur les piles 1 et 2.</li>
+          <li>Tour 4 (dernier) : donnes d'une carte sur la pile 1.</li>
+        </ul>
+        <p>
+          Lorsque le talon est épuisé, les piles de distribution sont ramassées (1 sur
+          2, puis sur 3, puis sur 4), retournées faces cachées SANS ÊTRE MÉLANGÉES, et
+          le tour suivant commence.
+        </p>
+        <p>
+          Si à la fin du tour 4 les cartes ne sont pas toutes rangées, la partie est
+          perdue.
+        </p>
+      </section>
+
+      <section>
+        <h3>Enchaînement vers une fondation</h3>
+        <p>
+          Lorsque vous déplacez une carte depuis A1, B1, C1, D1 ou X vers une fondation,
+          toutes les cartes déjà présentes à l'origine qui respectent encore l'ordre de
+          la fondation y montent dans le même mouvement.
+        </p>
+      </section>
+
+      <section>
+        <h3>Commandes</h3>
+        <ul>
+          <li>
+            <strong>Glisser</strong> une carte : déposez-la sur une fondation ou une case
+            libre valide.
+          </li>
+          <li>
+            <strong>Toucher une carte</strong> : elle monte sur une fondation si elle y
+            entre. Rien ne monte tout seul : seule la carte touchée bouge. Si elle convient
+            à plusieurs fondations et que vous voulez choisir, faites-la glisser.
+          </li>
+          <li>
+            <strong>Toucher le talon</strong> : distribue la donne suivante. S'il est
+            vide et qu'il reste un tour, ramasse les piles et passe au tour suivant.
+          </li>
+          <li>
+            <strong>Bouton ↶ Annuler</strong> ou touche <kbd>U</kbd> : revient sur le
+            dernier coup.
+          </li>
+          <li>
+            <strong>Barre d'espace</strong> : raccourci pour distribuer.
+          </li>
+          <li>
+            <strong>Bouton Nouvelle</strong> : lance une partie avec un nouveau jeu.
           </li>
         </ul>
       </section>

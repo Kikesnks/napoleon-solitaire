@@ -111,7 +111,9 @@ momento. Tecla `Esc` también cierra el modal.
 
 ## Controles
 
-- **Tap / clic** sobre una carta: intenta promoverla a una fundación.
+- **Tap / clic** sobre una carta: la sube a una fundación si encaja en alguna. Nunca
+  se mueve nada solo: la promoción es siempre manual, y si la carta vale para más de
+  una fundación se arrastra para elegir destino.
 - **Drag** (ratón o táctil): la suelta sobre cualquier free cell o fundación
   válida.
 - **Tap en el montón**: reparte la siguiente tirada (4/3/2/1 según ronda).
