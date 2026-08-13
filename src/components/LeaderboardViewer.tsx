@@ -13,15 +13,16 @@ interface Props {
   onClose(): void;
 }
 
+// Sin estado de error a propósito: `fetchLeaderboard` cae al ranking local
+// cuando no hay servidor (portales, sin conexión), así que un mensaje técnico
+// en pantalla sólo significaría que algo se nos ha escapado.
 type FetchState =
   | { kind: "loading" }
-  | { kind: "ok"; entries: LeaderboardEntry[] }
-  | { kind: "err"; message: string };
+  | { kind: "ok"; entries: LeaderboardEntry[] };
 
 export function LeaderboardViewer({ lang, onClose }: Props) {
   const [tab, setTab] = useState<LeaderboardCategory>("won");
   const [state, setState] = useState<FetchState>({ kind: "loading" });
-  const [reloadToken, setReloadToken] = useState(0);
   const t = STRINGS[lang];
   const isWon = tab === "won";
 
@@ -32,15 +33,13 @@ export function LeaderboardViewer({ lang, onClose }: Props) {
       .then((entries) => {
         if (!cancelled) setState({ kind: "ok", entries });
       })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        const msg = e instanceof Error ? e.message : String(e);
-        setState({ kind: "err", message: msg });
+      .catch(() => {
+        if (!cancelled) setState({ kind: "ok", entries: [] });
       });
     return () => {
       cancelled = true;
     };
-  }, [tab, reloadToken]);
+  }, [tab]);
 
   return (
     <div className="overlay lb-viewer" role="dialog" aria-modal="true" aria-labelledby="lb-viewer-title">
@@ -73,21 +72,6 @@ export function LeaderboardViewer({ lang, onClose }: Props) {
 
         <div className={`lb-viewer__body ${isWon ? "lb-viewer__body--won" : ""}`}>
           {state.kind === "loading" && <p className="lb__empty">{t.lbLoading}</p>}
-          {state.kind === "err" && (
-            <div style={{ textAlign: "center" }}>
-              <p className="lb__empty">{t.lbError}</p>
-              <p className="lb__empty" style={{ fontSize: 12, opacity: 0.7 }}>
-                {state.message}
-              </p>
-              <button
-                type="button"
-                className="hud__btn"
-                onClick={() => setReloadToken((n) => n + 1)}
-              >
-                {t.lbRetry}
-              </button>
-            </div>
-          )}
           {state.kind === "ok" && (
             <LbTable entries={state.entries} highlightTs={-1} lang={lang} />
           )}
