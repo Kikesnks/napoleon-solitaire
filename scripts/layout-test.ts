@@ -4,23 +4,36 @@
 // estén dentro del viewport.
 
 import { chromium } from "playwright";
-import { spawn, type ChildProcess } from "node:child_process";
-import path from "node:path";
+import { startPreview, stopPreview } from "./preview-server.ts";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
-const URL = "http://127.0.0.1:4173/";
+const PORT = 4173;
+const URL = `http://127.0.0.1:${PORT}/`;
 
 interface Viewport {
   name: string;
   width: number;
   height: number;
   colorScheme?: "light" | "dark";
+  locale?: string;
 }
 
 const VIEWPORTS: Viewport[] = [
   { name: "iPhone-SE-portrait", width: 375, height: 667 },
   { name: "Pixel-portrait", width: 412, height: 869 },
+  // Los móviles estrechos que quedan: es donde los cinco datos del marcador se
+  // montaban unos sobre otros. El francés vuelve a entrar porque sus nombres
+  // ("Points", "Coups", "Talon") son los más largos de los tres idiomas.
+  { name: "Android-360-portrait", width: 360, height: 740 },
+  { name: "Android-360-FR", width: 360, height: 740, locale: "fr-FR" },
+  { name: "Movil-320-portrait", width: 320, height: 568 },
   { name: "iPhone-landscape", width: 844, height: 390 },
+  // Apaisado de móvil: aquí la altura es el recurso escaso y es donde el
+  // tablero se salía por abajo, dejando las pilas de reparto 1-4 recortadas
+  // (sin scroll, así que sencillamente no se veían). El francés entra a
+  // propósito: sus botones son los más largos y engordan la cabecera, que es
+  // justo lo que rompía la estimación de altura del CSS.
+  { name: "Android-landscape-FR", width: 915, height: 412, locale: "fr-FR" },
+  { name: "Landscape-corto", width: 740, height: 340 },
   { name: "iPad-portrait", width: 820, height: 1180 },
   { name: "Laptop-1366", width: 1366, height: 768 },
   { name: "Desktop-1920", width: 1920, height: 1080 },
@@ -51,38 +64,9 @@ const PILE_IDS = [
   "pile4"
 ];
 
-async function startServer(): Promise<ChildProcess> {
-  const env = { ...process.env, PATH: `C:\\Program Files\\nodejs;${process.env.PATH ?? ""}` };
-  const proc = spawn("npx.cmd", ["vite", "preview", "--host", "127.0.0.1", "--port", "4173"], {
-    cwd: ROOT,
-    env,
-    stdio: ["ignore", "pipe", "pipe"],
-    shell: true // Necesario en Windows para ejecutar .cmd
-  });
-
-  return new Promise((resolve, reject) => {
-    let buffer = "";
-    const onData = (chunk: Buffer) => {
-      buffer += chunk.toString();
-      if (buffer.includes("4173") || buffer.includes("Local")) {
-        proc.stdout?.off("data", onData);
-        // dar un margen para que escuche
-        setTimeout(() => resolve(proc), 500);
-      }
-    };
-    proc.stdout?.on("data", onData);
-    proc.stderr?.on("data", (chunk) => process.stderr.write(chunk));
-    proc.on("error", reject);
-    proc.on("exit", (code) => {
-      if (code !== 0 && code !== null) reject(new Error(`vite preview exited ${code}`));
-    });
-    setTimeout(() => reject(new Error("server did not start in time")), 15000);
-  });
-}
-
 async function main(): Promise<void> {
   console.log("Arrancando vite preview...");
-  const server = await startServer();
+  const server = await startPreview({ port: PORT });
 
   const browser = await chromium.launch({ headless: true });
   let failed = 0;
@@ -91,7 +75,8 @@ async function main(): Promise<void> {
     for (const vp of VIEWPORTS) {
       const context = await browser.newContext({
         viewport: { width: vp.width, height: vp.height },
-        colorScheme: vp.colorScheme ?? "light"
+        colorScheme: vp.colorScheme ?? "light",
+        locale: vp.locale ?? "es-ES"
       });
       const page = await context.newPage();
       await page.goto(URL, { waitUntil: "networkidle" });
@@ -104,6 +89,15 @@ async function main(): Promise<void> {
       if (hadInstructions) {
         await page.click(".instructions__cta");
         await page.waitForTimeout(80);
+      }
+
+      // Y detrás viene el selector de palos (v1.2), que también tapa el
+      // tablero. Sin resolverlo, las medidas se tomaban sobre el diálogo.
+      const suit = await page.$(".suit-select");
+      if (suit) {
+        const options = await page.$$(".suit-select__option");
+        await options[1].click(); // 4 palos (baraja completa)
+        await page.waitForTimeout(1500); // deja terminar el reparto animado
       }
 
       // Para el viewport de dark mode, hacemos un deal para que aparezca al
@@ -127,6 +121,35 @@ async function main(): Promise<void> {
           };
           var board = document.querySelector('.board');
           var main = document.querySelector('.app__main');
+
+          // Marcador: ¿caben los cinco datos? Se mide con el peor cronómetro
+          // realista ("888:88", una partida de más de 12 horas) porque en el
+          // test el reloj marca 00:0X y no destaparía el problema. El valor se
+          // pisa a mano un instante; React lo repinta en el siguiente render.
+          var stats = [];
+          var statEls = document.querySelectorAll('.hud__stat');
+          var reloj = statEls.length ? statEls[0].querySelector('.hud__stat-value') : null;
+          var relojOriginal = reloj ? reloj.textContent : null;
+          if (reloj) reloj.textContent = '888:88';
+          for (var s = 0; s < statEls.length; s++) {
+            var el = statEls[s];
+            var etiqueta = el.querySelector('.hud__stat-label');
+            var valor = el.querySelector('.hud__stat-value');
+            stats.push({
+              texto: (etiqueta ? (etiqueta.innerText || '').trim() : ''),
+              valor: (valor ? (valor.textContent || '').trim() : ''),
+              clientWidth: el.clientWidth,
+              // scrollWidth incluye lo que se sale de la caja: si es mayor que
+              // clientWidth, el contenido no cabe (y antes de recortarlo se
+              // pintaba encima del dato de al lado).
+              scrollWidth: el.scrollWidth,
+              right: el.getBoundingClientRect().right
+            });
+          }
+          if (reloj && relojOriginal !== null) reloj.textContent = relojOriginal;
+
+          var hudRect = rect(document.querySelector('.hud'));
+
           var piles = {};
           for (var i = 0; i < pileIds.length; i++) {
             var id = pileIds[i];
@@ -145,6 +168,8 @@ async function main(): Promise<void> {
             mainScroll: main ? { scrollHeight: main.scrollHeight, scrollWidth: main.scrollWidth } : null,
             board: rect(board),
             main: rect(main),
+            hud: hudRect,
+            stats: stats,
             piles: piles
           };
           `
@@ -156,11 +181,56 @@ async function main(): Promise<void> {
         mainScroll: { scrollHeight: number; scrollWidth: number } | null;
         board: { x: number; y: number; w: number; h: number } | null;
         main: { x: number; y: number; w: number; h: number } | null;
+        hud: { x: number; y: number; w: number; h: number } | null;
+        stats: Array<{
+          texto: string;
+          valor: string;
+          clientWidth: number;
+          scrollWidth: number;
+          right: number;
+        }>;
         piles: Record<string, { x: number; y: number; w: number; h: number } | null>;
       };
 
-      const { viewport, documentScroll, mainScroll, board, piles } = measurements;
+      const { viewport, documentScroll, mainScroll, board, main, hud, stats, piles } =
+        measurements;
       let vpFailed = false;
+
+      // 0a) El marcador del HUD debe CABER, no sólo no desbordar la pantalla.
+      //     Cinco datos en un móvil estrecho se pisaban entre ellos.
+      if (stats.length !== 5) {
+        console.log(`  [${vp.name}] FAIL esperaba 5 datos en el HUD, hay ${stats.length}`);
+        vpFailed = true;
+      }
+      for (const st of stats) {
+        if (st.scrollWidth > st.clientWidth + 1) {
+          console.log(
+            `  [${vp.name}] FAIL el dato "${st.texto}" no cabe: necesita ${st.scrollWidth}px y tiene ${st.clientWidth}px`
+          );
+          vpFailed = true;
+        }
+      }
+      const ultimo = stats[stats.length - 1];
+      if (hud && ultimo && ultimo.right > hud.x + hud.w + 1) {
+        console.log(
+          `  [${vp.name}] FAIL el marcador se sale del HUD (borde ${ultimo.right.toFixed(0)} > ${(hud.x + hud.w).toFixed(0)})`
+        );
+        vpFailed = true;
+      }
+
+      // 0) El tablero debe caber DENTRO de su contenedor. `.app__main` recorta
+      //    con overflow:hidden y sin scroll, así que lo que se salga no es que
+      //    quede feo: desaparece. Se comprueba aparte del viewport porque es el
+      //    borde que de verdad recorta.
+      if (board && main) {
+        const desborde = Math.max(0, board.y + board.h - (main.y + main.h));
+        if (desborde > 1) {
+          console.log(
+            `  [${vp.name}] FAIL el tablero se sale ${desborde.toFixed(0)}px por debajo de .app__main (se recorta sin scroll)`
+          );
+          vpFailed = true;
+        }
+      }
 
       // 1) No debe haber scroll vertical
       if (documentScroll.scrollHeight > viewport.h + 1) {
@@ -314,7 +384,7 @@ async function main(): Promise<void> {
     }
   } finally {
     await browser.close();
-    server.kill();
+    stopPreview(server);
   }
 
   if (failed === 0) {

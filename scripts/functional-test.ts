@@ -5,38 +5,14 @@
 //  - Verifica que la carta superior del montón está boca abajo.
 
 import { chromium } from "playwright";
-import { spawn, type ChildProcess } from "node:child_process";
-import path from "node:path";
+import { startPreview, stopPreview } from "./preview-server.ts";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
-const URL = "http://127.0.0.1:4174/";
-
-async function startServer(): Promise<ChildProcess> {
-  const env = { ...process.env, PATH: `C:\\Program Files\\nodejs;${process.env.PATH ?? ""}` };
-  const proc = spawn("npx.cmd", ["vite", "preview", "--host", "127.0.0.1", "--port", "4174"], {
-    cwd: ROOT,
-    env,
-    stdio: ["ignore", "pipe", "pipe"],
-    shell: true
-  });
-  return new Promise((resolve, reject) => {
-    let buffer = "";
-    const onData = (chunk: Buffer) => {
-      buffer += chunk.toString();
-      if (buffer.includes("4174")) {
-        proc.stdout?.off("data", onData);
-        setTimeout(() => resolve(proc), 500);
-      }
-    };
-    proc.stdout?.on("data", onData);
-    proc.on("error", reject);
-    setTimeout(() => reject(new Error("server did not start")), 15000);
-  });
-}
+const PORT = 4174;
+const URL = `http://127.0.0.1:${PORT}/`;
 
 async function main(): Promise<void> {
   console.log("Arrancando vite preview...");
-  const server = await startServer();
+  const server = await startPreview({ port: PORT });
   const browser = await chromium.launch({ headless: true });
   let failed = 0;
   const ok = (msg: string) => console.log(`  ok  ${msg}`);
@@ -64,7 +40,9 @@ async function main(): Promise<void> {
     }
 
     // Toggle de idioma EN
-    await page.click('.instructions__lang-btn:has-text("EN")');
+    // El selector ahora es bandera + nombre del idioma; localizamos por title,
+    // que no depende del texto visible ni del orden.
+    await page.click('.instructions__lang-btn[title="English"]');
     await page.waitForTimeout(50);
     const titleEN = await page.textContent(".instructions__title");
     if (titleEN && titleEN.toLowerCase().includes("rules")) {
@@ -73,7 +51,7 @@ async function main(): Promise<void> {
       fail(`toggle EN: título no cambió, sigue "${titleEN}"`);
     }
     // Volver a ES
-    await page.click('.instructions__lang-btn:has-text("ES")');
+    await page.click('.instructions__lang-btn[title="Español"]');
     await page.waitForTimeout(50);
 
     // Pulsa "Empezar a jugar" para entrar al juego
@@ -85,6 +63,19 @@ async function main(): Promise<void> {
     } else {
       fail("dismiss: el modal sigue visible tras pulsar 'Empezar a jugar'");
     }
+
+    // ---------- 0a. Selector de palos (aparece tras cerrar las reglas) ----------
+    // Se añadió en v1.2 y este test no lo contemplaba: el diálogo tapaba el
+    // tablero y todos los clics posteriores fallaban.
+    await page.waitForSelector(".suit-select", { timeout: 5000 });
+    const suitOptions = await page.$$(".suit-select__option");
+    if (suitOptions.length === 2) {
+      ok("primer arranque: selector de palos con 2 opciones");
+    } else {
+      fail(`selector de palos: esperaba 2 opciones, hay ${suitOptions.length}`);
+    }
+    await suitOptions[1].click(); // 4 palos (baraja completa)
+    await page.waitForTimeout(120);
 
     // ---------- 0b. Animación de reparto inicial ----------
     // Tras cerrar las instrucciones, .board--dealing debe estar presente
@@ -183,7 +174,10 @@ async function main(): Promise<void> {
       // eslint-disable-next-line no-new-func
       new Function(
         `
-        var labels = document.querySelectorAll('.hud__stat-label');
+        // Ojo: cada rótulo lleva ahora DOS textos (nombre completo y
+        // abreviatura, uno oculto por CSS según el ancho). Leer el
+        // .hud__stat-label entero daría "MontónMont".
+        var labels = document.querySelectorAll('.hud__stat-label--long');
         var values = document.querySelectorAll('.hud__stat-value');
         var out = {};
         for (var i = 0; i < labels.length; i++) {
@@ -267,8 +261,11 @@ async function main(): Promise<void> {
       fail(`distribución de contadores incorrecta`);
     }
 
-    // ---------- 6. Botón 📖 Reglas reabre la pantalla de instrucciones ----------
-    await page.click('.hud__btn--icon');
+    // ---------- 6. Botón Reglas reabre la pantalla de instrucciones ----------
+    // Ojo: `.hud__btn--icon` es ahora el botón 🏆 del leaderboard, añadido
+    // después de escribirse este test. El de reglas se localiza por su
+    // aria-label, que no depende del orden de los botones.
+    await page.click('button[aria-label="Reglas"]');
     await page.waitForTimeout(100);
     const reopened = await page.$(".instructions");
     if (reopened) {
@@ -283,6 +280,78 @@ async function main(): Promise<void> {
     } else {
       fail(`reapertura: esperaba "Cerrar", el botón dice "${ctaText.trim()}"`);
     }
+
+    // ---------- 6b. El diagrama del tablero está bien alineado ----------
+    // La columna central del diagrama es más ancha que las demás (ahí van las
+    // cartas tumbadas). X llevaba ancho fijo y se quedaba pegada al borde
+    // izquierdo de su celda, descuadrada respecto a B/B1 y D/D1, que sí se
+    // centran. En el tablero de verdad no pasa, así que el dibujo mentía.
+    const centros = (await page.evaluate(
+      // eslint-disable-next-line no-new-func
+      new Function(
+        `
+        var centro = function(pos) {
+          var el = document.querySelector('.diagram [data-pos="' + pos + '"]');
+          if (!el) return null;
+          var r = el.getBoundingClientRect();
+          return r.x + r.width / 2;
+        };
+        return { X: centro('X'), B: centro('B'), D: centro('D'), I: centro('I') };
+        `
+      ) as () => Record<string, number | null>
+    )) as Record<string, number | null>;
+
+    if (centros.X != null && centros.B != null && centros.D != null) {
+      const desvB = Math.abs(centros.X - centros.B);
+      const desvD = Math.abs(centros.X - centros.D);
+      if (desvB <= 1 && desvD <= 1) {
+        ok("diagrama de las reglas: X centrada con B/B1 y D/D1");
+      } else {
+        fail(
+          `diagrama: X descentrada respecto a la columna central (B ${desvB.toFixed(1)}px, D ${desvD.toFixed(1)}px)`
+        );
+      }
+    } else {
+      fail("diagrama: no encuentro los slots X/B/D para medir la alineación");
+    }
+
+    // ---------- 6c. El enlace a la política se lee ----------
+    // Hereda estilos de la barra oscura del juego; sobre el pie claro de las
+    // reglas se quedaba en un amarillo invisible.
+    const contraste = (await page.evaluate(
+      // eslint-disable-next-line no-new-func
+      new Function(
+        `
+        var el = document.querySelector('.instructions__privacy-link');
+        if (!el) return null;
+        var cs = getComputedStyle(el);
+        var lum = function(c) {
+          var m = c.match(/\\d+/g);
+          if (!m) return null;
+          // Luminancia relativa aproximada (suficiente para distinguir un
+          // texto oscuro de uno claro sobre fondo claro).
+          return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255;
+        };
+        return { texto: lum(cs.color), fondo: lum(cs.backgroundColor) };
+        `
+      ) as () => { texto: number | null; fondo: number | null } | null
+    )) as { texto: number | null; fondo: number | null } | null;
+
+    if (contraste && contraste.texto != null && contraste.fondo != null) {
+      const salto = Math.abs(contraste.fondo - contraste.texto);
+      if (contraste.texto < 0.4 && salto > 0.4) {
+        ok(
+          `enlace de privacidad legible: texto oscuro (lum ${contraste.texto.toFixed(2)}) sobre fondo claro (lum ${contraste.fondo.toFixed(2)})`
+        );
+      } else {
+        fail(
+          `enlace de privacidad con poco contraste: texto ${contraste.texto.toFixed(2)} vs fondo ${contraste.fondo.toFixed(2)}`
+        );
+      }
+    } else {
+      fail("enlace de privacidad: no puedo medir el contraste");
+    }
+
     await page.click(".instructions__cta");
     await page.waitForTimeout(80);
 
@@ -298,7 +367,7 @@ async function main(): Promise<void> {
     }
   } finally {
     await browser.close();
-    server.kill();
+    stopPreview(server);
   }
 
   if (failed === 0) {

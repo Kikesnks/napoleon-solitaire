@@ -327,6 +327,63 @@ check("undo restaura X con 3 cartas (1 sola entrada en history a pesar de 3 move
 check("undo restaura I con la 4 sola", undone.positions.I.length === 1);
 
 // ============================================================
+// La promoción sólo la dispara un toque del jugador (ver `autoPromote` y
+// `useDragDrop`), pero el motor tenía además dos vetos por origen y por rango
+// heredados de cuando sí era automática: las pilas de reparto 1-4 no promovían
+// nunca, y un Rey en A/B/C/D no bajaba a una fundación vacía. Con la promoción
+// ya sólo manual esos vetos convertían un toque legítimo en "no pasa nada".
+section("autoPromote: sube desde cualquier origen válido cuando el jugador toca");
+
+function estadoConPromovible(overrides: Partial<CoreState["positions"]>): GameState {
+  const base = createInitialState({ preshuffled: controlledDeck });
+  return {
+    ...base,
+    positions: {
+      ...base.positions,
+      I: [],
+      II: [],
+      III: [],
+      IV: [],
+      X: [],
+      ...overrides
+    }
+  };
+}
+
+const kd = controlledDeck.find((c) => c.suit === "diamonds" && c.rank === 13 && c.deck === 0)!;
+const ac = controlledDeck.find((c) => c.suit === "clubs" && c.rank === 1 && c.deck === 0)!;
+
+const desdeReparto = reduceAction(
+  estadoConPromovible({ pile1: [{ ...ac, faceUp: true }] }),
+  { type: "autoPromote", from: "pile1" }
+);
+check(
+  "As tocado en una pila de reparto sube a X",
+  desdeReparto.positions.X.length === 1 && desdeReparto.positions.pile1.length === 0
+);
+
+const reyEnStock = reduceAction(
+  estadoConPromovible({ A: [{ ...filler, faceUp: false }, { ...kd, faceUp: true }] }),
+  { type: "autoPromote", from: "A" }
+);
+check(
+  "Rey tocado en A baja a una fundación descendente vacía",
+  reyEnStock.positions.I.length === 1 && reyEnStock.positions.I[0].rank === 13
+);
+check(
+  "y la siguiente carta de A queda boca arriba",
+  reyEnStock.positions.A.length === 1 && reyEnStock.positions.A[0].faceUp
+);
+
+// El contrapunto: sin destino legal la acción no hace nada. Sin esto, un toque
+// en cualquier carta parecería "gastar" un movimiento.
+const sinDestino = estadoConPromovible({
+  pile1: [{ ...controlledDeck.find((c) => c.suit === "clubs" && c.rank === 7 && c.deck === 1)!, faceUp: true }]
+});
+const intento = reduceAction(sinDestino, { type: "autoPromote", from: "pile1" });
+check("tocar una carta sin fundación posible no cambia nada", intento === sinDestino);
+
+// ============================================================
 console.log(`\n=================`);
 if (failed === 0) {
   console.log(`OK — todos los chequeos pasaron`);
