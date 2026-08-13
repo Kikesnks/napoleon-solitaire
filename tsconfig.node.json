@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "composite": true,
+    // Sin esto, `tsc -b` emitía `vite.config.js` JUNTO al `.ts` — y Vite da
+    // prioridad al `.js`, así que los cambios en `vite.config.ts` se quedaban
+    // sin efecto en cada build. Los artefactos van fuera del proyecto.
+    "outDir": "./node_modules/.tmp/node-config",
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",

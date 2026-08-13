@@ -29,3 +29,7 @@ FALLOS*.txt
 .vercel
 .env*.local
 .agents/
+
+# Build de portales y paquetes generados
+dist-portal
+paquetes
