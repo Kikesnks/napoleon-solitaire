@@ -43,8 +43,8 @@ const SHOTS: VP[] = [
     showInstructions: true,
     lang: "English"
   },
-  // El francés estaba en la lista de capturas de `ficha_portales.md` pero nadie
-  // lo generaba: el archivo no existía.
+  // El francés se daba por capturado pero nadie lo generaba: el archivo no
+  // llegaba a existir.
   {
     name: "instructions-fr-laptop",
     width: 1366,

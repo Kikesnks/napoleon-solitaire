@@ -2,7 +2,9 @@
 // Mecanismo de leaderboard reutilizable por cualquier juego. NO conoce el
 // Solitario Napoleón: los tipos concretos (qué es una "prueba" de partida, qué
 // campos extra lleva una entrada) los aporta el juego al instanciarlo.
-// Ver plan_monetización.md → "Principio rector nº 2: este juego es el MOLDE".
+//
+// Esta carpeta es la parte reutilizable del proyecto: si mañana hay un segundo
+// solitario, se lleva `core/` entero y solo escribe su atadura.
 
 /** Categorías del ranking. Cada juego decide cuáles usa ("won" | "lost"…). */
 export type CategoryId = string;

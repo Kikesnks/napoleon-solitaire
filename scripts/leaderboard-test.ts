@@ -1,6 +1,6 @@
 // Test del mecanismo de ranking (src/core/leaderboard) sin navegador.
 //
-// Cubre T1.1 y T1.4 de plan_subida_portales.md:
+// Cubre las dos garantías de la fachada:
 //  - T1.1 Con el backend caído, ninguna operación lanza.
 //  - T1.4 El respaldo local guarda, ordena y persiste entre "sesiones".
 //

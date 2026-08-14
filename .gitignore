@@ -33,3 +33,14 @@ FALLOS*.txt
 # Build de portales y paquetes generados
 dist-portal
 paquetes
+
+# Documentos de negocio y estrategia: no forman parte del proyecto técnico.
+plan_monetización.md
+plan_subida_portales.md
+ficha_portales.md
+informe_portales_1.md
+informe_asia_1.md
+informe_monetizar_1.md
+
+# Notas de trabajo del autor
+estadisticas.md

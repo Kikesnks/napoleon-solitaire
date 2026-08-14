@@ -2,7 +2,7 @@
 // CrazyGames — desde un subdirectorio de SU dominio, donde nuestro backend no
 // existe (cualquier /api/... responde 404).
 //
-// Cubre de plan_subida_portales.md:
+// Cubre:
 //   T1.2  el ranking no enseña errores técnicos sin servidor
 //   T1.3  partida sin errores de consola ni promesas rechazadas
 //   T2.1  idiomas no españoles → inglés

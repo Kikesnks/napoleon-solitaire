@@ -16,10 +16,10 @@ function readStoredLang(): Lang | null {
 
 /**
  * Idioma inicial: se sirve el idioma del navegador **si lo tenemos traducido**
- * (español, francés) y, si no, **inglés**. En los portales (CrazyGames,
- * GameDistribution, Y8) el público es mundial: mandar a español a un jugador
- * japonés o alemán era perder jugadores en el primer segundo. El inglés es el
- * salvavidas mientras no haya más traducciones — ver `informe_asia_1.md`.
+ * (español, francés) y, si no, **inglés**. El público de un juego embebido en
+ * un portal es mundial: mandar a español a un jugador japonés o alemán era
+ * perderlo en el primer segundo. El inglés hace de salvavidas mientras no haya
+ * más traducciones.
  */
 function detectBrowserLang(): Lang {
   if (typeof navigator === "undefined") return "en";
