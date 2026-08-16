@@ -3,7 +3,18 @@
 > **Qué es esto.** La receta de lo que hay que montar en cada solitario nuevo: qué se reutiliza tal cual, qué se escribe desde cero, en qué orden y con qué trampas conocidas.
 > **Para quién.** Lo usa principalmente Claude al arrancar un juego nuevo, pero está escrito para que el propietario lo lea y lo entienda sin ser programador.
 > **De dónde sale.** De construir el Solitario Napoleón. Todo lo que hay aquí está probado en un juego real, no es teoría.
-> Creado: 16 de agosto de 2026 · Sustituye a la idea de una carpeta `MOLDE/` con código copiado (decisión D6).
+> Creado y actualizado: 16 de agosto de 2026 · Sustituye a la idea de una carpeta `MOLDE/` con código copiado (decisión D6).
+
+## Cómo se usa este documento
+
+Es **un solo archivo y no depende de nada**. Para arrancar un solitario nuevo:
+
+```bash
+mkdir -p <nuevo-proyecto>/docs/tecnica
+cp "docs/tecnica/molde_solitarios.md" <nuevo-proyecto>/docs/tecnica/
+```
+
+Se copia **antes de escribir una línea de código** y se sigue el checklist de §11. Cuando el juego nuevo enseñe algo que aquí no está, se añade **en el molde del proyecto nuevo** y se trae de vuelta a este: el documento vale lo que valga la última lección aprendida.
 
 ---
 
@@ -52,7 +63,8 @@ game/  ──usa──►  core/  ◄──usa──  platform/
 | Consentimiento y política de privacidad | Modos de dificultad |
 | Anuncios y capa de recompensas | Arte, icono y nombre |
 | Compras (quitar anuncios, cosméticos) | Ficha de tienda |
-| Reto diario por semilla del día | |
+| Reto diario: semilla del día, calendario del mes y racha | |
+| Solver que valida las semillas antes de publicarlas | |
 | Estadísticas y rachas | |
 | Analítica y eventos | |
 | Motor de pistas *(parametrizado por reglas)* | |
@@ -123,6 +135,17 @@ Cuatro archivos: `types.ts` (el contrato), `remote.ts` (servidor HTTP), `local.t
 **Lo importante: la fachada nunca lanza una excepción.** Si el servidor no responde, cae al ranking local y el jugador no ve nunca un mensaje técnico. En un portal, donde `/api/...` sencillamente no existe, esto es la diferencia entre un juego que funciona y uno que enseña "Failed to fetch" en pantalla.
 
 El juego concreto aporta **su atadura** (`game/leaderboard.ts`): sus tipos y de dónde salen los datos. La fachada no sabe qué es una puntuación de Napoleón.
+
+**Una tabla por dificultad, desde el primer día.** Si el juego tiene modos que puntúan distinto, mezclarlos en una tabla premia al modo fácil y compara lo incomparable. Cuatro cosas que aprendimos partiéndolas tarde:
+
+- **La separación tiene que llegar hasta la consulta.** Filtrar el top 10 ya recortado deja la tabla difícil **vacía** en cuanto los diez primeros puestos se llenan de partidas fáciles — que es justo lo que va a pasar. Atraviesa las cuatro capas: interfaz, fachada, API y `SELECT`.
+- **`qualifies` se parte también.** Comparar una puntuación del modo difícil contra el top del fácil hace que casi nunca clasifique. Es el mismo error escondido en otro sitio y **es silencioso**: no rompe nada visible, solo deja de ofrecer el ranking a quien se lo ha ganado.
+- **El servidor comprueba las dos mitades** de la tabla declarada contra su propia simulación. Sin eso, cualquiera manda una partida del modo fácil a la tabla difícil y la encabeza.
+- **Cómo hacerlo sin migrar la base de datos:** un identificador compuesto (`"won-2"`, `"lost-4"`) que viaja por el cable y que el servidor descompone. En la base, dificultad y desenlace siguen siendo **dos columnas distintas**, así que cada fila que ya existía cae sola en la tabla que le toca. Para la base común es gratis: la categoría siempre fue una cadena opaca.
+
+Y si las claves de almacenamiento cambian, **hay que repartir el ranking local que ya existía**. En un portal el ranking local es el único que hay: perderlo es perder todo lo que el jugador tenía.
+
+**La tabla dice de dónde salen sus datos.** La fachada expone `getScope()` → `"global" | "local"`; cuando es local se rotula *"Solo en este dispositivo"* con una línea que lo explica, y cuando es global no se rotula nada. Una tabla titulada "Liga de Campeones" llena de nombres que son todos tuyos, sin explicar por qué, es engañosa. **Ojo:** en el Napoleón esa función existía desde el primer día y no la usaba nadie — escribirla no sirve de nada si nadie la llama.
 
 ### ✅ `core/storage/prefs.ts` — almacenamiento que no revienta
 
@@ -222,7 +245,7 @@ Archivos: `types.ts` · `deck.ts` (barajado con PRNG sembrado) · `state.ts` · 
 | Pieza | Qué se hereda |
 |---|---|
 | **Vercel** | Despliegue del `dist/`. Ojo: despliega `dist`, **no** `dist-portal` |
-| **Supabase** | Tabla del ranking + `api/leaderboard/{list,submit}` |
+| **Supabase** | Tabla del ranking + `api/leaderboard/{list,submit}`. **El índice tiene que cubrir el filtro entero**: si se consulta por desenlace *y* dificultad, el índice lleva las dos columnas y luego el orden (`category, suit_mode, score DESC, ts ASC`) |
 | **Anti-trampas** | El servidor re-simula la partida con la semilla y el registro de acciones antes de aceptar una puntuación |
 | **Keepalive** | `api/keepalive` + cron diario en `vercel.json`. Sin esto, el plan gratuito de Supabase **pausa el proyecto por inactividad** y el ranking deja de funcionar |
 | **Imports ESM** | En las funciones serverless, los imports relativos **necesitan la extensión `.js`** o fallan solo en producción |
@@ -252,8 +275,9 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 | `npm run typecheck` | Tipos |
 | `npm run test:architecture` | **La frontera de §2**: falla si `core/` o `platform/` importan del juego, si `game/` importa de `platform/` o de React, o si el juego lee el destino del build |
 | `npm run test:smoke` | Motor de reglas, sin navegador |
-| `npm run test:daily` | Reto diario: semillas deterministas, racha y almacenamiento que revienta |
-| `npm run test:leaderboard` | Ranking con el servidor caído |
+| `npm run test:daily` | Reto diario: semillas deterministas, racha, colección y almacenamiento que revienta |
+| `npm run test:solver` | Que el solver **no miente**: una partida truncada no se da por ganada, y cada semilla publicada se gana reproduciendo su partida contra el motor real |
+| `npm run test:leaderboard` | Ranking con el servidor caído, tablas que no se mezclan y migración del ranking local |
 | `npm run test:layout` | 12 viewports: sin scroll, sin recortes, con el peor caso forzado |
 | `npm run test:functional` | Navegador real: flujo completo |
 | `npm run test:portal` | Build de portal servido desde subcarpeta con `/api` caído |
@@ -278,7 +302,9 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 8. **No escribas en un test un hecho que va a caducar.** Una comprobación decía "la tabla de semillas está vacía" —cierto el día que se escribió— y se puso en rojo sola en cuanto el solver la rellenó. Un test debe afirmar la **regla** (las semillas publicadas son válidas, un día sin entrada deriva la suya), nunca el estado del momento.
 9. **Un almacenamiento inyectable puede reventar.** El del navegador ya absorbe sus errores, pero en cuanto se permite inyectar otro hay que asumir lo peor y envolverlo: quedarse sin racha es un incordio, que el juego no arranque es perderlo. Este fallo lo cazó el test del reto diario antes de llegar a producción.
 10. **Una regla de seguridad protege a alguien concreto: comprueba que ese alguien existe antes de aplicarla.** "Un día publicado es un día congelado" protege a quien ya jugó ese día. Di por intocables los 16 primeros días de agosto sin caer en que el reto diario **se había estrenado ese mismo día 16**: los 15 anteriores no los vio nadie y no había nada que proteger. Estuve a punto de dejar medio mes sin garantía por respetar una regla en el vacío. Antes de dar algo por irreversible, mira **desde cuándo existe la función** — el historial de git lo dice en un comando.
-11. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
+11. **Un diálogo tiene que caber en apaisado, y no cabe.** En horizontal la ventana puede tener 340 px de alto: cualquier panel se sale y sus botones de abajo quedan fuera de la pantalla, sin forma de llegar a ellos porque `body` lleva `overflow: hidden`. Se arregla haciendo que **desplace el overlay, no el panel**, y centrando el panel con `margin: auto` — `align-items: center` a secas recorta por ARRIBA cuando el contenido no cabe y deja el título inalcanzable. En el Napoleón esto llevaba roto desde antes de que nadie lo mirara: **el test de layout mide el tablero, no los diálogos.**
+12. **Un script de capturas que cierra todos los diálogos no puede fotografiar lo que vive en un diálogo.** El reto diario, el calendario y el ranking no salían en ninguna imagen de la ficha de tienda — la función más vendible del juego, invisible. Y hay que **sembrar datos de muestra**: un calendario en blanco y una tabla vacía no enseñan nada. Que quede escrito en la ficha que esas capturas llevan progreso inventado.
+13. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
 
 ---
 
