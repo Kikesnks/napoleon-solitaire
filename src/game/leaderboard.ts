@@ -15,44 +15,66 @@ import type {
 export type { LeaderboardCategory, LeaderboardEntry } from "./leaderboard-types.js";
 
 /**
- * Destino del build. `portal` (CrazyGames, GameDistribution, Y8…) desactiva el
- * ranking global: el juego corre en el dominio del portal, donde nuestro
- * backend no existe. Se lee así, sin depender de los tipos de Vite, para que
- * `tsc --noEmit` siga funcionando tal cual.
+ * De dónde salen las puntuaciones. **Lo decide la plataforma, no el juego**:
+ * en nuestro dominio hay backend; en un portal el juego corre en un dominio
+ * ajeno donde `/api/...` no existe y el ranking se queda en local.
+ *
+ * El Napoleón no sabe dónde está corriendo —no importa nada de `src/platform/`—
+ * así que la capa de aplicación se lo dice al arrancar, con `configureLeaderboard`.
  */
-const TARGET =
-  (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_TARGET ??
-  "web";
+let remoteBaseUrl: string | null = "/api/leaderboard";
 
-const REMOTE_BASE = TARGET === "portal" ? null : "/api/leaderboard";
+/**
+ * Conecta el ranking con el destino donde corre el juego. Lo llama `main.tsx`
+ * antes de pintar nada.
+ *
+ * Si no se llamara, el valor por defecto es el del dominio propio. Es el
+ * respaldo menos malo: en un build de portal un olvido se ve enseguida
+ * —aparecen 404 y el test `T4.1` lo caza—, mientras que el defecto contrario
+ * degradaría el ranking global a local sin que nadie se enterase.
+ */
+export function configureLeaderboard(opts: { remoteBaseUrl: string | null }): void {
+  remoteBaseUrl = opts.remoteBaseUrl;
+  board = null; // se reconstruye con la configuración nueva
+}
 
-const board = createLeaderboard<LeaderboardEntry, SubmitPayload>({
-  remoteBaseUrl: REMOTE_BASE,
-  max: LEADERBOARD_MAX,
-  local: {
-    storageKey: "solnap.lb",
+let board: ReturnType<typeof createBoard> | null = null;
+
+function createBoard() {
+  return createLeaderboard<LeaderboardEntry, SubmitPayload>({
+    remoteBaseUrl,
     max: LEADERBOARD_MAX,
-    toEntry: (payload) => ({
-      name: payload.name,
-      score: payload.score,
-      suitMode: payload.suitMode,
-      date: new Date().toISOString().slice(0, 10),
-      ts: Date.now()
-    })
-  }
-});
+    local: {
+      storageKey: "solnap.lb",
+      max: LEADERBOARD_MAX,
+      toEntry: (payload) => ({
+        name: payload.name,
+        score: payload.score,
+        suitMode: payload.suitMode,
+        date: new Date().toISOString().slice(0, 10),
+        ts: Date.now()
+      })
+    }
+  });
+}
+
+/** El ranking se construye en el primer uso, ya configurado. */
+function getBoard(): ReturnType<typeof createBoard> {
+  if (!board) board = createBoard();
+  return board;
+}
 
 /** Top de la categoría. Nunca lanza: sin servidor devuelve el ranking local. */
 export const fetchLeaderboard = (cat: LeaderboardCategory): Promise<LeaderboardEntry[]> =>
-  board.list(cat);
+  getBoard().list(cat);
 
 /** Envía la partida. Nunca lanza: sin servidor guarda en local y devuelve el top. */
 export const submitScore = (payload: SubmitPayload): Promise<LeaderboardEntry[]> =>
-  board.submit(payload);
+  getBoard().submit(payload);
 
 /** ¿La puntuación entra en el top? Nunca lanza. */
 export const qualifies = (cat: LeaderboardCategory, score: number): Promise<boolean> =>
-  board.qualifies(cat, score);
+  getBoard().qualifies(cat, score);
 
 /** "global" o "local", según de dónde vinieron las últimas entradas. */
-export const leaderboardScope = (): "global" | "local" => board.getScope();
+export const leaderboardScope = (): "global" | "local" => getBoard().getScope();

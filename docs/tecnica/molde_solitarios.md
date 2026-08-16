@@ -27,6 +27,8 @@ La tentación es copiar una carpeta con la estructura hecha. No se hace, por tre
 > - **No** → va en el **código del juego**.
 > - **"Casi"** → va en la base común **parametrizado**. Nunca duplicado, y nunca con un `if (napoleon)` dentro.
 
+**Esto no se vigila a ojo: lo vigila `npm run test:architecture`**, que analiza los imports y pone el pipeline en rojo si alguien cruza la frontera. Una regla que solo está escrita se erosiona sola.
+
 Y la dependencia va **siempre en un solo sentido**:
 
 ```
@@ -126,9 +128,19 @@ El juego concreto aporta **su atadura** (`game/leaderboard.ts`): sus tipos y de 
 
 Acceder a `localStorage` **puede lanzar** (modo privado estricto, permisos denegados). Todo acceso va envuelto. Consecuencia conocida y aceptada: en modo privado el juego no puede saber si es tu primera visita, así que no enseña las reglas de entrada. Se juega igual.
 
-### ⏳ `platform/` — la capa de adaptadores
+### ✅ `platform/` — la capa de adaptadores
 
 Una interfaz, un adaptador por destino, detección al arrancar. El juego pregunta por **capacidades** ("¿hay anuncio recompensado?"), nunca por identidad ("¿estoy en CrazyGames?"). Así, añadir un portal es escribir un archivo y no revisar la interfaz entera.
+
+Hoy hay dos adaptadores: `web` (backend propio, ranking global) y `portal` (dominio ajeno, sin backend, ranking local). Los identificadores de los tres portales concretos apuntan de momento al genérico; se separarán cuando haya un SDK real que integrar.
+
+**Quién conecta las dos mitades:** la capa de aplicación (`main.tsx`), que es el único archivo que conoce los dos lados. El juego no importa nada de `platform/`; recibe su configuración al arrancar:
+
+```ts
+const platform = getPlatform();
+configureLeaderboard({ remoteBaseUrl: platform.leaderboard.remoteBaseUrl });
+void platform.init();
+```
 
 ```ts
 interface Platform {
@@ -211,6 +223,7 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 | Comando | Qué cubre |
 |---|---|
 | `npm run typecheck` | Tipos |
+| `npm run test:architecture` | **La frontera de §2**: falla si `core/` o `platform/` importan del juego, si `game/` importa de `platform/` o de React, o si el juego lee el destino del build |
 | `npm run test:smoke` | Motor de reglas, sin navegador |
 | `npm run test:leaderboard` | Ranking con el servidor caído |
 | `npm run test:layout` | 12 viewports: sin scroll, sin recortes, con el peor caso forzado |

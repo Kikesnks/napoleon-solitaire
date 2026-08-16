@@ -81,10 +81,18 @@ Tabla separada para partidas ganadas y para partidas terminadas sin ganar, persi
 
 ## Arquitectura
 
-La separación entre **el mecanismo y el juego concreto** es deliberada: lo reutilizable vive en `src/core/` y no conoce el Napoleón; `src/game/` es la atadura.
+La separación entre **el mecanismo y el juego concreto** es deliberada: lo reutilizable vive en `src/platform/` y `src/core/` y no conoce el Napoleón; `src/game/` es la atadura.
+
+La dependencia va siempre en un solo sentido —`game/` usa la base común, la base común no sabe que existe el Napoleón— y **eso lo vigila un test**: `npm run test:architecture` analiza los imports y falla si alguien cruza la frontera.
 
 ```
 src/
+  platform/                ← DÓNDE corre el juego. Reutilizable.
+    types.ts               ← Interfaz Platform + capacidades declaradas.
+    detect.ts              ← Qué adaptador toca, en tiempo de ejecución.
+    adapters/web.ts        ← Dominio propio: backend y ranking global.
+    adapters/portal.ts     ← Dominio ajeno: sin backend, ranking local.
+
   core/                    ← Reutilizable. No conoce el Napoleón.
     leaderboard/
       types.ts             ← Contrato del backend.
@@ -123,6 +131,19 @@ docs/                      ← Toda la documentación. La raíz solo lleva READM
 ```
 
 Las tres últimas carpetas quedan fuera del repositorio por `.gitignore` **a nivel de carpeta**, no por nombre de archivo: así el filtro no se rompe si alguien renombra un documento.
+
+### La capa de plataforma
+
+El mismo juego corre en sitios que no se parecen: nuestro dominio, un portal ajeno, y mañana la app de Android. Cada uno guarda las puntuaciones en otro sitio, sirve otros anuncios y exige otras llamadas. En vez de repartir `if (estamos en tal portal)` por los componentes, hay **una interfaz y un adaptador por destino**, elegido al arrancar.
+
+La clave está en las **capacidades declaradas**: el juego nunca pregunta *¿estoy en CrazyGames?*, sino *¿hay anuncio recompensado?*. Así, añadir un portal es escribir un adaptador y no revisar la interfaz.
+
+```ts
+const platform = getPlatform();                                  // main.tsx
+configureLeaderboard({ remoteBaseUrl: platform.leaderboard.remoteBaseUrl });
+```
+
+`main.tsx` es el único sitio que conoce los dos lados: `platform/` no sabe que existe el Napoleón y `game/` no sabe dónde está corriendo. Antes, `game/leaderboard.ts` leía la variable de build `VITE_TARGET` para decidir si había backend; ahora esa decisión la aporta la plataforma.
 
 ### La fachada del ranking
 
@@ -195,7 +216,8 @@ Lo interesante es que **es comprobable**. `test:portal` verifica en cada ejecuci
 ## Tests
 
 ```bash
-npm test                    # pipeline completo — 138 comprobaciones
+npm test                    # pipeline completo
+npm run test:architecture   # la frontera entre base común y juego
 npm run test:smoke          # solo el motor (puro, ~50 ms)
 npm run test:leaderboard    # el ranking nunca enseña errores técnicos
 npm run test:layout         # 12 viewports en chromium headless, sin scroll
@@ -203,6 +225,8 @@ npm run test:functional     # interacción real en navegador
 npm run test:portal         # el build embebido, servido sin backend
 npm run test:screenshots    # regenera las capturas
 ```
+
+- **`test:architecture`** analiza los imports y falla si `core/` o `platform/` importan del juego, si `game/` importa de `platform/` o de React, o si alguien vuelve a leer el destino del build desde dentro del juego. Comprueba además que cada adaptador declara lo que debe. Es el guardián del principio que abarata el siguiente solitario: sin él, la frontera se erosiona sola.
 
 - **`test:smoke`** cubre la disposición inicial, `canPlace` en todos los destinos, el encadenado, la reposición de free cells, el reparto y las rondas, el deshacer, y dos regresiones concretas: la del *snapshot shallow* (tras 3 repartos y 3 deshacer, todas las cartas del montón siguen boca abajo — antes el snapshot copiaba solo el array y el reparto mutaba `faceUp` en sitio, contaminando los estados archivados) y la de la promoción manual desde cualquier origen válido.
 
