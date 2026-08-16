@@ -165,6 +165,18 @@ const SHOTS: VP[] = [
     dialog: "daily",
     demoData: "daily"
   },
+  // El francés se captura igual que los otros dos: la ficha de portales lleva
+  // los textos en tres idiomas, y mandar a un portal francés una imagen en
+  // inglés teniendo la traducción hecha sería tirar el trabajo.
+  {
+    name: "daily-calendar-fr-mobile",
+    width: 375,
+    height: 667,
+    deals: 0,
+    lang: "Français",
+    dialog: "daily",
+    demoData: "daily"
+  },
   // El ranking, ya separado por dificultad.
   {
     name: "leaderboard-mobile",
@@ -221,7 +233,11 @@ async function main(): Promise<void> {
       // El diálogo se abre al final, sobre el tablero ya repartido: así la
       // captura enseña la función sin que el fondo esté vacío.
       if (vp.dialog === "daily") {
-        await page.click('button[aria-label^="Nueva"], button[aria-label^="New"]');
+        // Los tres idiomas, escritos enteros: `^="New"` no casa con "Nouvelle"
+        // y la captura francesa se quedaba sin hacer.
+        await page.click(
+          'button[aria-label="Nueva"], button[aria-label="New"], button[aria-label="Nouvelle"]'
+        );
         await page.waitForSelector(".suit-select__daily", { timeout: 5000 });
         await page.waitForTimeout(250);
       }

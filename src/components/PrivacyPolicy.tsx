@@ -67,9 +67,18 @@ function PolicyES() {
         <li>El idioma que elegiste.</li>
         <li>La dificultad que elegiste (2 o 4 palos).</li>
         <li>Si ya viste las reglas, para no repetírtelas.</li>
+        <li>La partida que tengas a medias, para que no se pierda si recargas.</li>
+        <li>Tu racha del reto diario y tu mejor resultado en cada día.</li>
+        <li>
+          Las jugadas de los retos que hayas completado este mes, para poder acreditar tu
+          puntuación si algún día hay clasificación. Se borran solas al cambiar de mes.
+        </li>
         <li>Tus mejores partidas, cuando el ranking funciona en local.</li>
       </ul>
-      <p>Puedes borrarlo todo vaciando los datos del sitio en tu navegador.</p>
+      <p>
+        Nada de esto dice quién eres: son datos de la partida, no tuyos. Puedes borrarlo todo
+        vaciando los datos del sitio en tu navegador.
+      </p>
 
       <h3>Cookies</h3>
       <p>Ninguna. El juego no instala cookies, ni propias ni de terceros.</p>
@@ -114,9 +123,18 @@ function PolicyEN() {
         <li>The language you chose.</li>
         <li>The difficulty you chose (2 or 4 suits).</li>
         <li>Whether you have already seen the rules, so we don't repeat them.</li>
+        <li>Any game you have in progress, so a page reload does not lose it.</li>
+        <li>Your daily-challenge streak and your best result on each day.</li>
+        <li>
+          The moves of the challenges you complete this month, so your score can be credited
+          if a ranking ever exists. They are cleared when the month changes.
+        </li>
         <li>Your best games, when the leaderboard runs locally.</li>
       </ul>
-      <p>Clearing the site data in your browser removes all of it.</p>
+      <p>
+        None of this says who you are: it is game data, not yours. Clearing the site data in
+        your browser removes all of it.
+      </p>
 
       <h3>Cookies</h3>
       <p>None. The game sets no cookies, first-party or third-party.</p>
@@ -163,9 +181,18 @@ function PolicyFR() {
         <li>La langue que vous avez choisie.</li>
         <li>La difficulté que vous avez choisie (2 ou 4 couleurs).</li>
         <li>Si vous avez déjà lu les règles, pour ne pas vous les réafficher.</li>
+        <li>La partie en cours, pour qu'un rechargement de la page ne la perde pas.</li>
+        <li>Votre série du défi du jour et votre meilleur résultat de chaque journée.</li>
+        <li>
+          Les coups des défis que vous terminez ce mois-ci, afin que votre score puisse être
+          validé si un classement voit le jour. Ils sont effacés au changement de mois.
+        </li>
         <li>Vos meilleures parties, lorsque le classement fonctionne en local.</li>
       </ul>
-      <p>Vous pouvez tout effacer en supprimant les données du site dans votre navigateur.</p>
+      <p>
+        Rien de tout cela ne dit qui vous êtes : ce sont des données de partie, pas les vôtres.
+        Vous pouvez tout effacer en supprimant les données du site dans votre navigateur.
+      </p>
 
       <h3>Cookies</h3>
       <p>Aucun. Le jeu ne dépose aucun cookie, ni interne ni tiers.</p>

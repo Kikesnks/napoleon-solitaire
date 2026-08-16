@@ -255,9 +255,11 @@ No hace falta ninguna clave de API para jugar en local: sin backend, el ranking 
 
 El juego no recopila ninguna información sobre el jugador: sin cuentas, sin registro, sin perfilado. No instala cookies, ni propias ni de terceros.
 
-Lo único que se guarda —y se queda en el dispositivo— son cinco claves bajo el prefijo `solnap.`: idioma, dificultad elegida, si ya se vieron las reglas, la partida en curso y el ranking local.
+Lo único que se guarda —y se queda en el dispositivo— son claves bajo el prefijo `solnap.`: idioma, dificultad elegida, si ya se vieron las reglas, la partida en curso, el reto diario (racha, resultados y las jugadas del mes en curso) y el ranking local. **Ninguna dice quién es el jugador**: son datos de la partida.
 
 Lo interesante es que **es comprobable**. `test:portal` verifica en cada ejecución que no se crea ni una cookie, que no sale ni una petición a un dominio ajeno y que en `localStorage` no aparece ninguna clave que no sea nuestra. Si alguien introdujera un rastreador, el pipeline se pondría en rojo.
+
+Y `test:architecture` verifica que **la política de privacidad las enumera todas**, en los dos sentidos: ninguna clave del código sin declarar, ninguna clave declarada que ya no exista. Esa lista se había quedado corta dos veces —al añadir el guardado de la partida y al añadir el reto diario— sin que nadie mintiera: el código avanzó y el documento no. Una promesa que nadie vigila deja de ser cierta sola.
 
 ## Tests
 
