@@ -9,9 +9,21 @@ interface Props {
   score: number;
   elapsedMs: number;
   onPlayAgain(): void;
+  /** La partida que acaba de terminar era el reto de hoy. */
+  wasDaily: boolean;
+  /** Días seguidos jugando el reto. */
+  dailyStreak: number;
 }
 
-export function GameOverlay({ lang, status, score, elapsedMs, onPlayAgain }: Props) {
+export function GameOverlay({
+  lang,
+  status,
+  score,
+  elapsedMs,
+  onPlayAgain,
+  wasDaily,
+  dailyStreak
+}: Props) {
   if (status === "playing") return null;
   const t = STRINGS[lang];
   const won = status === "won";
@@ -19,6 +31,17 @@ export function GameOverlay({ lang, status, score, elapsedMs, onPlayAgain }: Pro
     <div className="overlay" role="dialog" aria-modal="true">
       <div className={`overlay__panel ${won ? "overlay__panel--win" : "overlay__panel--lose"}`}>
         <h2 className="overlay__title">{won ? t.won : t.lost}</h2>
+        {wasDaily && (
+          <p className="overlay__daily">
+            🗓️ {t.dailyTitle}
+            {dailyStreak > 0 && (
+              <>
+                {" · 🔥 "}
+                {t.dailyStreak}: {dailyStreak} {dailyStreak === 1 ? t.day : t.days}
+              </>
+            )}
+          </p>
+        )}
         <p className="overlay__message">{won ? t.wonMessage : t.lostMessage}</p>
         <dl className="overlay__stats">
           <div>

@@ -94,6 +94,7 @@ src/
     adapters/portal.ts     ← Dominio ajeno: sin backend, ranking local.
 
   core/                    ← Reutilizable. No conoce el Napoleón.
+    daily/                 ← Reto diario: semilla por fecha, racha y resultados.
     leaderboard/
       types.ts             ← Contrato del backend.
       remote.ts            ← Servidor HTTP.
@@ -108,6 +109,8 @@ src/
     rules.ts               ← Validación, movimientos, encadenado, repartos, puntuación.
     save.ts                ← Guardado por semilla + registro de acciones.
     leaderboard.ts         ← Atadura del Napoleón a core/leaderboard.
+    daily.ts               ← Atadura del Napoleón a core/daily.
+    daily-seeds.ts         ← Tabla de semillas del reto. Archivo de datos.
 
   hooks/
     useGameEngine.ts       ← Estado, dispatch, deshacer y persistencia.
@@ -144,6 +147,22 @@ configureLeaderboard({ remoteBaseUrl: platform.leaderboard.remoteBaseUrl });
 ```
 
 `main.tsx` es el único sitio que conoce los dos lados: `platform/` no sabe que existe el Napoleón y `game/` no sabe dónde está corriendo. Antes, `game/leaderboard.ts` leía la variable de build `VITE_TARGET` para decidir si había backend; ahora esa decisión la aporta la plataforma.
+
+### El reto diario
+
+Una partida idéntica para todo el mundo cada día, que sale casi gratis porque el motor es determinista: basta con fijar la semilla. Hay **dos retos por día**, uno de 2 palos y otro de 4.
+
+La semilla sale de una **tabla de datos** (`daily-seeds.ts`) y, para cualquier día que no esté en ella, se **deriva de la propia fecha** con un FNV-1a. Así el reto nunca falta aunque la tabla esté vacía, y la tabla queda como contrato para el solver que la validará más adelante.
+
+Tres detalles que no son obvios:
+
+- **La fecha es local, no UTC.** La racha es del jugador, no del meridiano de Greenwich.
+- **El día anterior se calcula construyendo la fecha a mediodía.** Restar 24 horas se tuerce en los cambios de hora, y una racha no puede romperse porque el país haya adelantado el reloj.
+- **Que la partida en curso sea el reto de hoy se deduce de la semilla**, sin guardar ninguna marca ni añadir un campo al estado del motor.
+
+La racha cuenta **días jugados**, no victorias: en un solitario de dos barajas, una racha que solo contara victorias sería un cero permanente.
+
+> Ningún texto de la interfaz promete que el reto del día tenga solución. Mientras el solver no valide las semillas, puede no tenerla — y prometerlo sería justo la clase de promesa que destruye la confianza en la función que existe para que el jugador vuelva mañana.
 
 ### La fachada del ranking
 
@@ -219,6 +238,7 @@ Lo interesante es que **es comprobable**. `test:portal` verifica en cada ejecuci
 npm test                    # pipeline completo
 npm run test:architecture   # la frontera entre base común y juego
 npm run test:smoke          # solo el motor (puro, ~50 ms)
+npm run test:daily          # reto diario: semillas, racha y sin almacenamiento
 npm run test:leaderboard    # el ranking nunca enseña errores técnicos
 npm run test:layout         # 12 viewports en chromium headless, sin scroll
 npm run test:functional     # interacción real en navegador
@@ -229,6 +249,8 @@ npm run test:screenshots    # regenera las capturas
 - **`test:architecture`** analiza los imports y falla si `core/` o `platform/` importan del juego, si `game/` importa de `platform/` o de React, o si alguien vuelve a leer el destino del build desde dentro del juego. Comprueba además que cada adaptador declara lo que debe. Es el guardián del principio que abarata el siguiente solitario: sin él, la frontera se erosiona sola.
 
 - **`test:smoke`** cubre la disposición inicial, `canPlace` en todos los destinos, el encadenado, la reposición de free cells, el reparto y las rondas, el deshacer, y dos regresiones concretas: la del *snapshot shallow* (tras 3 repartos y 3 deshacer, todas las cartas del montón siguen boca abajo — antes el snapshot copiaba solo el array y el reparto mutaba `faceUp` en sitio, contaminando los estados archivados) y la de la promoción manual desde cualquier origen válido.
+
+- **`test:daily`** inyecta un almacenamiento de mentira para poder simular días seguidos, saltos de día y cambios de mes y de año sin tocar el reloj del sistema. Comprueba que el mismo día da siempre el mismo reparto, que 2 y 4 palos son retos distintos, que la racha suma, se corta y conserva su récord, y que **con el almacenamiento roto no lanza nada**: ese último caso destapó un fallo real —el módulo daba por hecho que el almacenamiento inyectado nunca falla— antes de que llegara a producción.
 
 - **`test:layout`** confirma que el tablero **cabe sin scroll** en 12 viewports —de 320 px a 1920 px, en vertical y apaisado, en español y en francés— y que las 18 pilas quedan dentro del contenedor. Comprueba además que los cinco datos del marcador caben enteros, **forzando el cronómetro a `888:88`**: con el reloj recién arrancado cabría en cualquier sitio y la prueba no demostraría nada.
 

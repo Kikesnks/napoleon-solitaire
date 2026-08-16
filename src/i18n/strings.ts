@@ -60,6 +60,16 @@ export interface UIStrings {
   twoSuitsDesc: string;
   fourSuitsDesc: string;
   cancel: string;
+  // Reto diario. Ojo: ningún texto promete que el reparto tenga solución —
+  // hasta que el solver valide las semillas, puede no tenerla.
+  freeGame: string;
+  dailyTitle: string;
+  dailyHint: string;
+  dailyStreak: string;
+  dailyBest: string;
+  dailyPlayedToday: string;
+  day: string;
+  days: string;
   // Liga de Campeones
   leaderboard: string;
   lbTabWon: string;
@@ -112,6 +122,14 @@ export const STRINGS: Record<Lang, UIStrings> = {
     chooseSuits: "¿Con cuántos palos?",
     twoSuits: "2 palos",
     fourSuits: "4 palos",
+    freeGame: "Partida libre",
+    dailyTitle: "Reto diario",
+    dailyHint: "El mismo reparto para todo el mundo, hoy",
+    dailyStreak: "Racha",
+    dailyBest: "Mejor",
+    dailyPlayedToday: "Ya jugado hoy",
+    day: "día",
+    days: "días",
     twoSuitsDesc: "Un palo rojo y uno negro (más fácil)",
     fourSuitsDesc: "Los cuatro palos — versión original",
     cancel: "Cancelar",
@@ -166,6 +184,14 @@ export const STRINGS: Record<Lang, UIStrings> = {
     chooseSuits: "How many suits?",
     twoSuits: "2 suits",
     fourSuits: "4 suits",
+    freeGame: "Free game",
+    dailyTitle: "Daily challenge",
+    dailyHint: "The same deal for everyone, today",
+    dailyStreak: "Streak",
+    dailyBest: "Best",
+    dailyPlayedToday: "Already played today",
+    day: "day",
+    days: "days",
     twoSuitsDesc: "One red suit and one black (easier)",
     fourSuitsDesc: "All four suits — original version",
     cancel: "Cancel",
@@ -218,6 +244,14 @@ export const STRINGS: Record<Lang, UIStrings> = {
     chooseSuits: "Avec combien de couleurs ?",
     twoSuits: "2 couleurs",
     fourSuits: "4 couleurs",
+    freeGame: "Partie libre",
+    dailyTitle: "Défi du jour",
+    dailyHint: "La même donne pour tout le monde, aujourd'hui",
+    dailyStreak: "Série",
+    dailyBest: "Record",
+    dailyPlayedToday: "Déjà joué aujourd'hui",
+    day: "jour",
+    days: "jours",
     twoSuitsDesc: "Une couleur rouge et une noire (plus facile)",
     fourSuitsDesc: "Les quatre couleurs — version originale",
     cancel: "Annuler",

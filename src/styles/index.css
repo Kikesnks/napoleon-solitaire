@@ -1545,6 +1545,60 @@ button {
   min-width: 100px;
 }
 
+/* Reto diario: bloque compacto. La cabecera del juego ya iba justa a 320 px,
+   así que el reto entra por aquí y no por el HUD. */
+.overlay__daily {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.suit-select__section {
+  margin: 14px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.suit-select__daily {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.suit-select__daily-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.suit-select__daily-hint {
+  margin: 2px 0 10px;
+  font-size: 11px;
+  opacity: 0.72;
+}
+
+.suit-select__daily-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.suit-select__daily-btn {
+  flex: 1;
+  max-width: 150px;
+}
+
+.suit-select__daily-streak {
+  margin: 8px 0 0;
+  min-height: 1em;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 /* Accesibilidad: respeto a prefers-reduced-motion. */
 @media (prefers-reduced-motion: reduce) {
   .board--dealing .pile__card .card,

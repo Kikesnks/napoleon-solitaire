@@ -166,11 +166,20 @@ Motor + diccionario. **El inglés es el idioma por defecto para todo lo que no s
 
 **Los textos de la base común van en su propio diccionario**, separados de los textos del juego. Si no, el siguiente solitario hereda las reglas del anterior.
 
-### ⏳ `core/rewards/`, `core/daily/`, `core/solver/`, `core/analytics/`, `core/consent/`
+### ✅ `core/daily/` — el reto diario
+
+Semilla por fecha, racha y resultado del día. No sabe nada de las reglas de ningún solitario: el juego solo le pasa **su tabla de semillas** y sus variantes de dificultad.
+
+Cuatro decisiones que conviene heredar tal cual:
+- **La tabla de semillas es un archivo de datos**, editable a mano y subible a GitHub sin tocar código. Es además el contrato con el solver: cuando exista, escribe ahí sin que la interfaz cambie.
+- **Si un día no está en la tabla, la semilla se deriva de la propia fecha** (FNV-1a). El reto nunca falta, aunque la tabla esté vacía.
+- **La fecha es local, no UTC**: la racha es del jugador. Y el día anterior se calcula construyendo la fecha **a mediodía**, porque sumar y restar 24 horas se tuerce en los cambios de hora — una racha no puede romperse porque el país haya adelantado el reloj.
+- **La racha cuenta participación, no victorias.** En un solitario difícil, una racha que solo cuente victorias es un cero permanente y deja de tirar del jugador.
+
+### ⏳ `core/rewards/`, `core/solver/`, `core/analytics/`, `core/consent/`
 
 Diseñados, no escritos. Reglas para cuando toque:
 - **rewards**: interfaz "dame una recompensa" que en web es gratis y en la app llama al SDK de anuncios. El juego nunca habla con un SDK directamente.
-- **daily**: reto por semilla del día + tabla de semillas validadas como **archivo de datos**, separado del código.
 - **solver**: se ejecuta **fuera del navegador**, en un script. Alimenta el reto diario y las pistas.
 - **analytics**: eventos neutros que cada adaptador envía a donde toque. **Nunca un tracker propio en un build de portal**: sería una petición a un tercero desde el dominio del portal.
 - **consent**: obligatorio en la UE en cuanto haya publicidad.
@@ -225,6 +234,7 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 | `npm run typecheck` | Tipos |
 | `npm run test:architecture` | **La frontera de §2**: falla si `core/` o `platform/` importan del juego, si `game/` importa de `platform/` o de React, o si el juego lee el destino del build |
 | `npm run test:smoke` | Motor de reglas, sin navegador |
+| `npm run test:daily` | Reto diario: semillas deterministas, racha y almacenamiento que revienta |
 | `npm run test:leaderboard` | Ranking con el servidor caído |
 | `npm run test:layout` | 12 viewports: sin scroll, sin recortes, con el peor caso forzado |
 | `npm run test:functional` | Navegador real: flujo completo |
@@ -247,7 +257,8 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 5. **En Windows, `proc.kill()` mata el intérprete y deja vivo el proceso que escucha.** Los servidores de previsualización huérfanos se acumulan y tumban otro test con un `EADDRINUSE` que no tiene nada que ver. Puerto estricto y matar el árbol entero.
 6. **`tsc -b` puede emitir un `vite.config.js` junto al `.ts`**, y Vite da prioridad al `.js`: cualquier cambio en la configuración se queda sin efecto, en silencio. Salida del subproyecto redirigida fuera de la raíz.
 7. **Las reglas no se muestran en cada carga.** Solo la primera visita, y accesibles desde un botón. Dos pantallas antes de jugar, todas las veces, es la fuga de retención más barata de tapar.
-8. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
+8. **Un almacenamiento inyectable puede reventar.** El del navegador ya absorbe sus errores, pero en cuanto se permite inyectar otro hay que asumir lo peor y envolverlo: quedarse sin racha es un incordio, que el juego no arranque es perderlo. Este fallo lo cazó el test del reto diario antes de llegar a producción.
+9. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
 
 ---
 

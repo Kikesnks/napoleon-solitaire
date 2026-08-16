@@ -6,6 +6,9 @@
 
 import { chromium } from "playwright";
 import { startPreview, stopPreview } from "./preview-server.ts";
+// El mismo mecanismo del reto diario que usa la aplicación: así el test puede
+// calcular la semilla que DEBERÍA haberse jugado, en vez de confiar en ella.
+import { daily } from "../src/game/daily.ts";
 
 const PORT = 4174;
 const URL = `http://127.0.0.1:${PORT}/`;
@@ -364,6 +367,55 @@ async function main(): Promise<void> {
       ok("recarga: las instrucciones NO se vuelven a mostrar (persistencia OK)");
     } else {
       fail("recarga: las instrucciones reaparecen tras recargar (persistencia rota)");
+    }
+
+    // ---------- 8. Reto diario (B3) ----------
+    // El mecanismo se prueba aparte en `test:daily`. Lo que se comprueba aquí
+    // es la conexión con la interfaz, que es lo que un test puro no ve: que el
+    // botón arranca EXACTAMENTE la partida del día y que la racha se guarda.
+    await page.click('button[aria-label="Nueva"]');
+    await page.waitForSelector(".suit-select__daily", { timeout: 5000 });
+    ok("el diálogo de nueva partida ofrece el reto diario");
+
+    const promesas = (await page.textContent(".suit-select__daily")) ?? "";
+    if (/soluci|solvable|solution/i.test(promesas)) {
+      fail(`el reto promete solución: "${promesas.trim()}"`);
+    } else {
+      ok("B3.6 el reto no promete que tenga solución");
+    }
+
+    const botonesDaily = await page.$$(".suit-select__daily-btn");
+    await botonesDaily[1].click(); // 4 palos
+    await page.waitForTimeout(200);
+
+    // La semilla que el juego ha guardado tiene que ser la del día, calculada
+    // aquí con el mismo mecanismo que usa la aplicación.
+    const guardado = await page.evaluate(() => ({
+      partida: window.localStorage.getItem("solnap.game"),
+      racha: window.localStorage.getItem("solnap.daily.streak")
+    }));
+    const esperada = daily.seedFor(daily.todayKey(), "4");
+    const seedJugada = guardado.partida ? (JSON.parse(guardado.partida) as { seed: number }).seed : null;
+    if (seedJugada === esperada) {
+      ok(`la partida arrancada es el reto de hoy (semilla ${esperada})`);
+    } else {
+      fail(`el reto diario arrancó con la semilla ${seedJugada}, esperaba ${esperada}`);
+    }
+
+    const racha = guardado.racha ? (JSON.parse(guardado.racha) as { current: number; last: string }) : null;
+    if (racha && racha.current === 1 && racha.last === daily.todayKey()) {
+      ok("la racha se guarda al empezar el reto (1 día)");
+    } else {
+      fail(`racha mal guardada: ${guardado.racha}`);
+    }
+
+    await page.click('button[aria-label="Nueva"]');
+    await page.waitForSelector(".suit-select__daily-streak", { timeout: 5000 });
+    const textoRacha = (await page.textContent(".suit-select__daily-streak")) ?? "";
+    if (textoRacha.includes("1") && /racha/i.test(textoRacha)) {
+      ok(`la racha se muestra al jugador: "${textoRacha.trim()}"`);
+    } else {
+      fail(`la racha no se muestra: "${textoRacha.trim()}"`);
     }
   } finally {
     await browser.close();

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./components/Board";
 import { Confetti } from "./components/Confetti";
 import { GameOverlay } from "./components/GameOverlay";
@@ -16,6 +16,7 @@ import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
 import { STRINGS } from "./i18n/strings";
 import type { SuitMode, Status } from "./game";
+import { daily, isTodaysChallenge, todaysSeed, variantOf } from "./game/daily";
 import { qualifies, submitScore, type LeaderboardCategory, type LeaderboardEntry } from "./game/leaderboard";
 
 /** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
@@ -80,6 +81,15 @@ export default function App() {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showLbViewer, setShowLbViewer] = useState(false);
 
+  // ── Reto diario ───────────────────────────────────────────────────────────
+  // La racha se guarda en localStorage y se relee tras cada partida, así que
+  // basta con un contador para forzar el refresco. Que la partida en curso sea
+  // el reto de hoy se DEDUCE de la semilla: es determinista y no hace falta
+  // guardar ninguna marca extra ni tocar el estado del motor.
+  const [dailyTick, setDailyTick] = useState(0);
+  const dailyStreak = useMemo(() => daily.streak(), [dailyTick]);
+  const isDailyGame = isTodaysChallenge(state.seed, state.suitMode);
+
   // Detecta el fin de partida una sola vez por juego.
   const prevStatusRef = useRef<Status>("playing");
   useEffect(() => {
@@ -93,6 +103,17 @@ export default function App() {
       return;
     }
     if (prev !== "playing") return; // ya gestionado en esta partida
+
+    // Resultado del reto de hoy: se guarda en local, solo en este dispositivo.
+    if (isDailyGame) {
+      daily.recordResult({
+        date: daily.todayKey(),
+        variant: variantOf(state.suitMode),
+        score: state.score,
+        won: cur === "won"
+      });
+      setDailyTick((n) => n + 1);
+    }
 
     const category: LeaderboardCategory = cur === "won" ? "won" : "lost";
     let cancelled = false;
@@ -244,6 +265,20 @@ export default function App() {
     setPendingSuitSource(null);
   };
 
+  /**
+   * Empieza el reto de hoy. Misma dificultad elegida, pero con la semilla del
+   * día: el mismo reparto para todo el mundo. Se marca como jugado al empezar,
+   * no al ganar — el Napoleón es difícil y una racha que solo cuente victorias
+   * sería un cero permanente, justo lo contrario de lo que hace volver mañana.
+   */
+  const handleDailySelect = (mode: SuitMode) => {
+    setPendingSuitSource(null);
+    writePref(SUIT_MODE_KEY, String(mode));
+    engine.newGame(todaysSeed(mode), mode);
+    daily.markPlayed(daily.todayKey());
+    setDailyTick((n) => n + 1);
+  };
+
   // El tablero se escala al hueco medido, no al estimado — ver `useFitBoard`.
   const mainRef = useRef<HTMLElement>(null);
   useFitBoard(mainRef);
@@ -280,6 +315,8 @@ export default function App() {
         score={state.score}
         elapsedMs={elapsedMs}
         onPlayAgain={() => setPendingSuitSource("gameover")}
+        wasDaily={isDailyGame}
+        dailyStreak={dailyStreak.current}
       />
       {showRules && (
         <Instructions
@@ -296,6 +333,9 @@ export default function App() {
           canCancel={pendingSuitSource === "hud"}
           onSelect={handleSuitSelect}
           onCancel={handleSuitCancel}
+          dailyStreak={dailyStreak.current}
+          dailyPlayedToday={dailyStreak.playedToday}
+          onSelectDaily={handleDailySelect}
         />
       )}
       {lbPhase.step === "name-entry" && (
