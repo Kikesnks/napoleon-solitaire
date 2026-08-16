@@ -45,7 +45,7 @@ Sin librerías de UI de terceros. El bundle embebible pesa **72 KB comprimido**.
 
 ## Estado actual
 
-**138 comprobaciones** en verde: motor, ranking, layout en 12 viewports, funcionales en navegador y build embebido. `npm test` encadena el pipeline completo.
+`npm test` encadena el pipeline completo y lo deja todo en verde: frontera de arquitectura, motor, reto diario, solver, ranking, layout en 12 viewports, funcionales en navegador y build embebido.
 
 ### Motor de reglas
 
@@ -68,6 +68,10 @@ Al no depender de React ni del DOM, cualquier framework de tests puede importar 
 - **Tres idiomas** (español, inglés y francés) con detección por navegador e inglés por defecto.
 - **La partida sobrevive a recargar la página.**
 - Política de privacidad accesible desde el juego; reglas solo en la primera visita y disponibles en todo momento.
+
+### Reto diario
+
+Dos retos cada día —uno de 2 palos y otro de 4—, iguales para todo el mundo, con racha de días jugados y el mejor resultado de cada día guardado en el dispositivo. Las semillas las valida un solver antes de publicarlas: **de cada día publicado existe una partida ganada comprobada**.
 
 ### Ranking global
 
@@ -164,6 +168,22 @@ La racha cuenta **días jugados**, no victorias: en un solitario de dos barajas,
 
 > Ningún texto de la interfaz promete que el reto del día tenga solución. Mientras el solver no valide las semillas, puede no tenerla — y prometerlo sería justo la clase de promesa que destruye la confianza en la función que existe para que el jugador vuelva mañana.
 
+### El solver
+
+Un buscador de partidas ganadas que corre **fuera del navegador**, como herramienta. La distinción que lo hace viable: **no decide si un reparto es imposible** —eso exigiría explorar el espacio entero— sino que **encuentra una victoria y la guarda**. Para el reto diario es justo lo que hace falta, porque las semillas las elegimos nosotros.
+
+De ahí sale la garantía: solo se publica un día cuyo reparto tenga una partida ganada, **verificada reproduciéndola contra el motor real** (`reduceAction`, el mismo que juega el jugador y el mismo que valida el servidor). Si el modelo rápido del solver se desviara del motor, la verificación lo caza y la semilla se descarta.
+
+```bash
+npm run solve -- 12345 4          # ¿se puede ganar esta semilla?
+npm run seeds:month -- --mes=2026-09 --escribir
+npm run seeds:bench -- 4 20 150000 8
+```
+
+Búsqueda *best-first* sobre un modelo compacto (cartas como enteros, estado como cadena, tabla de estados vistos), guiada por las cartas que faltan por colocar. El hallazgo que más rindió al medirlo: **muchos intentos cortos con desempates distintos ganan más partidas que pocos intentos largos** — el atasco típico no es que no haya solución, es haberse metido por el pasillo equivocado al principio.
+
+Tasa de acierto medida: **~60 % en 2 palos** y **~10 % en 4 palos** con 8 intentos de 150 000 nodos. Suficiente de sobra, porque no hay que resolver un reparto dado sino encontrar 62 buenos al mes.
+
 ### La fachada del ranking
 
 Es el ejemplo más claro del patrón. `createLeaderboard()` devuelve un objeto que **nunca lanza**: intenta el backend remoto y, si falla por cualquier motivo —red caída, 404, JSON inválido, `localStorage` bloqueado—, sirve el local. El juego llama a una sola función y no ve un error jamás.
@@ -239,6 +259,7 @@ npm test                    # pipeline completo
 npm run test:architecture   # la frontera entre base común y juego
 npm run test:smoke          # solo el motor (puro, ~50 ms)
 npm run test:daily          # reto diario: semillas, racha y sin almacenamiento
+npm run test:solver         # el solver no miente y las semillas se pueden ganar
 npm run test:leaderboard    # el ranking nunca enseña errores técnicos
 npm run test:layout         # 12 viewports en chromium headless, sin scroll
 npm run test:functional     # interacción real en navegador
@@ -251,6 +272,8 @@ npm run test:screenshots    # regenera las capturas
 - **`test:smoke`** cubre la disposición inicial, `canPlace` en todos los destinos, el encadenado, la reposición de free cells, el reparto y las rondas, el deshacer, y dos regresiones concretas: la del *snapshot shallow* (tras 3 repartos y 3 deshacer, todas las cartas del montón siguen boca abajo — antes el snapshot copiaba solo el array y el reparto mutaba `faceUp` en sitio, contaminando los estados archivados) y la de la promoción manual desde cualquier origen válido.
 
 - **`test:daily`** inyecta un almacenamiento de mentira para poder simular días seguidos, saltos de día y cambios de mes y de año sin tocar el reloj del sistema. Comprueba que el mismo día da siempre el mismo reparto, que 2 y 4 palos son retos distintos, que la racha suma, se corta y conserva su récord, y que **con el almacenamiento roto no lanza nada**: ese último caso destapó un fallo real —el módulo daba por hecho que el almacenamiento inyectado nunca falla— antes de que llegara a producción.
+
+- **`test:solver`** protege la promesa del reto diario. Comprueba que el solver encuentra una victoria conocida, que es determinista, y **que una partida truncada NO se da por ganada** —si eso fallara, la verificación estaría diciendo que sí a cualquier cosa y la garantía no valdría nada—. Después reproduce contra el motor las partidas guardadas de cada semilla publicada. Esas partidas viven en `scripts/.solutions/`, **fuera del repositorio**: son la solución del reto y publicarlas sería regalarla.
 
 - **`test:layout`** confirma que el tablero **cabe sin scroll** en 12 viewports —de 320 px a 1920 px, en vertical y apaisado, en español y en francés— y que las 18 pilas quedan dentro del contenedor. Comprueba además que los cinco datos del marcador caben enteros, **forzando el cronómetro a `888:88`**: con el reloj recién arrancado cabría en cualquier sitio y la prueba no demostraría nada.
 

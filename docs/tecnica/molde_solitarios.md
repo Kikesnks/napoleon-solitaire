@@ -176,11 +176,20 @@ Cuatro decisiones que conviene heredar tal cual:
 - **La fecha es local, no UTC**: la racha es del jugador. Y el día anterior se calcula construyendo la fecha **a mediodía**, porque sumar y restar 24 horas se tuerce en los cambios de hora — una racha no puede romperse porque el país haya adelantado el reloj.
 - **La racha cuenta participación, no victorias.** En un solitario difícil, una racha que solo cuente victorias es un cero permanente y deja de tirar del jugador.
 
-### ⏳ `core/rewards/`, `core/solver/`, `core/analytics/`, `core/consent/`
+### ✅ El solver (en `scripts/`, no en el bundle)
+
+La pieza que sostiene la promesa del reto diario. Tres decisiones que hay que repetir en cada solitario:
+
+1. **Buscar victorias, no demostrar imposibilidad.** Decidir que un reparto es imposible exige explorar el espacio entero; encontrar *una* partida ganada es incomparablemente más barato. Y como las semillas del reto **las elegimos nosotros**, con eso basta.
+2. **Modelo rápido propio + verificación con el motor real.** El motor clona las 104 cartas en cada jugada (lo necesita para el deshacer) y una búsqueda hace cientos de miles. El modelo del solver usa enteros y cadenas. El riesgo de tener dos modelos se cubre reproduciendo la partida encontrada contra el motor de verdad: **si se desvía, se descarta**. Nunca al revés.
+3. **Muchos intentos cortos, no pocos largos.** Medido: misma tasa de acierto con un 30 % menos de tiempo. El atasco típico no es "no hay solución", es haberse metido por el pasillo equivocado al principio, y para eso lo que sirve es reintentar con otro desempate.
+
+Tasa de acierto en el Napoleón: **~60 % en 2 palos, ~10 % en 4 palos** (8 intentos × 150 000 nodos). Un 10 % basta y sobra para elegir 31 días, pero **no basta para un motor de pistas**: si algún día se quiere dar pistas en 4 palos, hará falta un solver mejor.
+
+### ⏳ `core/rewards/`, `core/analytics/`, `core/consent/`
 
 Diseñados, no escritos. Reglas para cuando toque:
 - **rewards**: interfaz "dame una recompensa" que en web es gratis y en la app llama al SDK de anuncios. El juego nunca habla con un SDK directamente.
-- **solver**: se ejecuta **fuera del navegador**, en un script. Alimenta el reto diario y las pistas.
 - **analytics**: eventos neutros que cada adaptador envía a donde toque. **Nunca un tracker propio en un build de portal**: sería una petición a un tercero desde el dominio del portal.
 - **consent**: obligatorio en la UE en cuanto haya publicidad.
 
@@ -257,8 +266,9 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 5. **En Windows, `proc.kill()` mata el intérprete y deja vivo el proceso que escucha.** Los servidores de previsualización huérfanos se acumulan y tumban otro test con un `EADDRINUSE` que no tiene nada que ver. Puerto estricto y matar el árbol entero.
 6. **`tsc -b` puede emitir un `vite.config.js` junto al `.ts`**, y Vite da prioridad al `.js`: cualquier cambio en la configuración se queda sin efecto, en silencio. Salida del subproyecto redirigida fuera de la raíz.
 7. **Las reglas no se muestran en cada carga.** Solo la primera visita, y accesibles desde un botón. Dos pantallas antes de jugar, todas las veces, es la fuga de retención más barata de tapar.
-8. **Un almacenamiento inyectable puede reventar.** El del navegador ya absorbe sus errores, pero en cuanto se permite inyectar otro hay que asumir lo peor y envolverlo: quedarse sin racha es un incordio, que el juego no arranque es perderlo. Este fallo lo cazó el test del reto diario antes de llegar a producción.
-9. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
+8. **No escribas en un test un hecho que va a caducar.** Una comprobación decía "la tabla de semillas está vacía" —cierto el día que se escribió— y se puso en rojo sola en cuanto el solver la rellenó. Un test debe afirmar la **regla** (las semillas publicadas son válidas, un día sin entrada deriva la suya), nunca el estado del momento.
+9. **Un almacenamiento inyectable puede reventar.** El del navegador ya absorbe sus errores, pero en cuanto se permite inyectar otro hay que asumir lo peor y envolverlo: quedarse sin racha es un incordio, que el juego no arranque es perderlo. Este fallo lo cazó el test del reto diario antes de llegar a producción.
+10. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
 
 ---
 

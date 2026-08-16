@@ -93,8 +93,12 @@ function previousKey(date: string): string {
  * Semilla derivada de la fecha (FNV-1a). Determinista: el mismo día y la misma
  * variante dan siempre el mismo reparto, en cualquier dispositivo y sin
  * necesidad de servidor.
+ *
+ * Se exporta porque el generador de semillas la usa como primer candidato: si
+ * el reparto natural del día resulta ganable, la tabla acaba confirmando lo que
+ * el jugador habría tenido igualmente.
  */
-function deriveSeed(date: string, variant: string): number {
+export function deriveSeed(date: string, variant: string): number {
   let h = 0x811c9dc5;
   const texto = `${date}|${variant}`;
   for (let i = 0; i < texto.length; i++) {

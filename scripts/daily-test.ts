@@ -77,9 +77,38 @@ check(
   conTabla.seedFor("2026-09-01", "2") === d.seedFor("2026-09-01", "2") &&
     !conTabla.isFromTable("2026-09-01", "2")
 );
+// La tabla del juego crece cada mes con las semillas que valida el solver, así
+// que aquí no se comprueba cuántas hay —eso caducaría— sino que las que haya
+// estén bien formadas y que los días sin entrada sigan funcionando solos.
+const fechasPublicadas = Object.keys(DAILY_SEEDS);
 check(
-  "hoy la tabla del juego está vacía: todo se deriva de la fecha",
-  Object.keys(DAILY_SEEDS).length === 0
+  "las semillas publicadas son enteros positivos",
+  fechasPublicadas.every((f) =>
+    (["2", "4"] as const).every((v) => {
+      const s = DAILY_SEEDS[f]?.[v];
+      return s === undefined || (Number.isInteger(s) && s > 0);
+    })
+  )
+);
+check(
+  "las fechas publicadas tienen formato AAAA-MM-DD",
+  fechasPublicadas.every((f) => /^\d{4}-\d{2}-\d{2}$/.test(f))
+);
+
+const conTablaReal = createDaily({
+  storagePrefix: "test.daily",
+  storage: memoria(),
+  seeds: DAILY_SEEDS
+});
+if (fechasPublicadas.length > 0) {
+  const f = fechasPublicadas[0];
+  const v = DAILY_SEEDS[f]?.["2"] !== undefined ? "2" : "4";
+  check(`un día publicado usa su semilla validada (${f}, ${v} palos)`,
+    conTablaReal.seedFor(f, v) === DAILY_SEEDS[f]?.[v] && conTablaReal.isFromTable(f, v));
+}
+check(
+  "un día sin entrada sigue teniendo reto (semilla derivada)",
+  !conTablaReal.isFromTable("1999-01-01", "4") && conTablaReal.seedFor("1999-01-01", "4") > 0
 );
 
 // ============================================================
