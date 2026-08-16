@@ -34,6 +34,9 @@ export function LbTable({ entries, highlightTs, lang }: TableProps) {
   if (entries.length === 0) {
     return <p className="lb__empty">{t.lbEmpty}</p>;
   }
+  // Sin columna de palos: desde que cada dificultad tiene su tabla, repetiría
+  // el mismo número en todas las filas. La dificultad la dice la pestaña, y en
+  // pantallas estrechas ese ancho hace falta para el nombre.
   return (
     <table className="lb__table">
       <thead>
@@ -42,7 +45,6 @@ export function LbTable({ entries, highlightTs, lang }: TableProps) {
           <th>{t.lbColPlayer}</th>
           <th className="lb__col-r">{t.lbColScore}</th>
           <th className="lb__col-r">{t.lbColDate}</th>
-          <th className="lb__col-r">{t.lbColSuits}</th>
         </tr>
       </thead>
       <tbody>
@@ -52,7 +54,6 @@ export function LbTable({ entries, highlightTs, lang }: TableProps) {
             <td className="lb__name">{e.name}</td>
             <td className="lb__col-r lb__score-cell">{e.score}</td>
             <td className="lb__col-r lb__date">{e.date}</td>
-            <td className="lb__col-r lb__suits">{e.suitMode}</td>
           </tr>
         ))}
       </tbody>

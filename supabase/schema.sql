@@ -19,10 +19,21 @@ CREATE TABLE IF NOT EXISTS leaderboard (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Índice principal: top N por categoría ordenado por score DESC y ts ASC
+-- Índice principal: top N de cada tabla, ordenado por score DESC y ts ASC
 -- (empate: gana la entrada más antigua).
-CREATE INDEX IF NOT EXISTS leaderboard_top_idx
-  ON leaderboard (category, score DESC, ts ASC);
+--
+-- Son CUATRO tablas —ganadas y perdidas, por cada dificultad— y por eso el
+-- índice lleva `suit_mode`: con 2 palos se puntúa bastante más alto que con 4,
+-- así que mezclarlas premiaba la dificultad baja. No hizo falta crear ninguna
+-- tabla nueva para separarlas, porque `category` y `suit_mode` ya eran dos
+-- columnas distintas: cada fila que ya existía cae sola en la tabla que le toca.
+CREATE INDEX IF NOT EXISTS leaderboard_board_idx
+  ON leaderboard (category, suit_mode, score DESC, ts ASC);
+
+-- El índice anterior, sin `suit_mode`, ya no cubre ninguna consulta: todas
+-- filtran por las dos columnas. Se puede borrar sin miedo, y si esto se ejecuta
+-- en una base recién creada simplemente no existe.
+DROP INDEX IF EXISTS leaderboard_top_idx;
 
 -- RLS: lectura pública, escritura sólo con service_role (backend).
 ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
