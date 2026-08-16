@@ -5,8 +5,9 @@
 // entonces la escribe en `src/game/daily-seeds.ts`.
 //
 // Dos reglas que el script hace cumplir por su cuenta:
-//   · No se toca ningún día pasado ni el de hoy. Un día publicado es un día
-//     congelado: cambiarle la semilla le cambiaría el reparto a quien ya lo jugó.
+//   · No se toca ningún día que alguien haya podido jugar. Un día publicado es
+//     un día congelado: cambiarle la semilla le cambiaría el reparto a quien ya
+//     lo jugó, y su resultado guardado dejaría de corresponder con la partida.
 //   · No se escribe una semilla sin partida ganada verificada. Sin excepciones.
 //
 // Uso:
@@ -14,6 +15,13 @@
 //   npx tsx scripts/generate-seeds.ts            (mes en curso, sin escribir)
 //
 // Opciones: --intentos=8 --presupuesto=150000 --candidatas=40 --escribir
+//
+// --estreno=AAAA-MM-DD — SOLO PARA EL PRIMER MES. Declara el día en que el reto
+// diario llegó a producción. Los días ANTERIORES a esa fecha no se le sirvieron
+// nunca a nadie —la función no existía todavía—, así que no hay ningún resultado
+// guardado que estropear y sí se pueden generar. Los días desde el estreno en
+// adelante siguen congelados igual que siempre. Sin esta opción, todo el pasado
+// es intocable, que es el comportamiento correcto en cualquier mes normal.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -57,6 +65,26 @@ function diasDelMes(mesIso: string): string[] {
 const claveHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(
   hoy.getDate()
 ).padStart(2, "0")}`;
+
+/** Día de estreno del reto diario, si se declara. Ver la cabecera del archivo. */
+const estreno = args.get("estreno") ?? null;
+if (estreno !== null && !/^\d{4}-\d{2}-\d{2}$/.test(estreno)) {
+  console.error(`--estreno tiene que ser una fecha AAAA-MM-DD (he recibido "${estreno}")`);
+  process.exit(1);
+}
+
+/**
+ * ¿Es un día que alguien ya pudo jugar? Esos no se tocan jamás.
+ *
+ * El futuro nunca lo es. El pasado lo es siempre... salvo que se declare un día
+ * de estreno, y entonces los días anteriores a él tampoco: el reto diario no
+ * existía, nadie los vio y no hay nada que romper.
+ */
+function congelado(fecha: string): boolean {
+  if (fecha > claveHoy) return false;
+  if (estreno === null) return true;
+  return fecha >= estreno;
+}
 
 // ---------------------------------------------------------------- búsqueda
 
@@ -156,8 +184,15 @@ const soluciones: Record<string, { semilla: number; acciones: LoggedAction[] }> 
 
 console.log(
   `Mes ${mes} · ${dias.length} días · ${intentos} intentos × ${presupuesto} nodos · ` +
-    `hasta ${maxCandidatas} semillas candidatas por reto\n`
+    `hasta ${maxCandidatas} semillas candidatas por reto`
 );
+if (estreno !== null) {
+  console.log(
+    `Estreno declarado el ${estreno}: los días anteriores nunca se sirvieron y sí se generan.\n` +
+      `Del ${estreno} en adelante, congelados como siempre.`
+  );
+}
+console.log("");
 
 let generadas = 0;
 let saltadas = 0;
@@ -165,8 +200,8 @@ let fallidas = 0;
 const t0 = Date.now();
 
 for (const fecha of dias) {
-  // Regla de oro: un día publicado es un día congelado.
-  if (fecha <= claveHoy) {
+  // Regla de oro: un día que alguien ya pudo jugar es un día congelado.
+  if (congelado(fecha)) {
     saltadas++;
     continue;
   }

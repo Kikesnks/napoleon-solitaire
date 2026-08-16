@@ -170,11 +170,13 @@ Motor + diccionario. **El inglés es el idioma por defecto para todo lo que no s
 
 Semilla por fecha, racha y resultado del día. No sabe nada de las reglas de ningún solitario: el juego solo le pasa **su tabla de semillas** y sus variantes de dificultad.
 
-Cuatro decisiones que conviene heredar tal cual:
+Seis decisiones que conviene heredar tal cual:
 - **La tabla de semillas es un archivo de datos**, editable a mano y subible a GitHub sin tocar código. Es además el contrato con el solver: cuando exista, escribe ahí sin que la interfaz cambie.
 - **Si un día no está en la tabla, la semilla se deriva de la propia fecha** (FNV-1a). El reto nunca falta, aunque la tabla esté vacía.
 - **La fecha es local, no UTC**: la racha es del jugador. Y el día anterior se calcula construyendo la fecha **a mediodía**, porque sumar y restar 24 horas se tuerce en los cambios de hora — una racha no puede romperse porque el país haya adelantado el reloj.
 - **La racha cuenta participación, no victorias.** En un solitario difícil, una racha que solo cuente victorias es un cero permanente y deja de tirar del jugador.
+- **Qué días se pueden jugar lo decide el motor, no la interfaz.** `playableKeys(hoy)` y `isPlayable(fecha, hoy)` devuelven del día 1 del mes a hoy, y de ahí saca su lista el calendario. Puesto en el motor, ninguna pantalla futura puede saltarse la regla por descuido, y una fecha que llegue de fuera —una URL manipulada, un dato viejo guardado— se rechaza sola.
+- **Que exista la semilla no abre el día.** La tabla va semanas por delante del calendario, así que son dos cosas distintas y hay que probarlo explícitamente: tener la semilla del día 25 no puede abrir el día 25 cuando estamos a 16.
 
 ### ✅ El solver (en `scripts/`, no en el bundle)
 
@@ -185,6 +187,10 @@ La pieza que sostiene la promesa del reto diario. Tres decisiones que hay que re
 3. **Muchos intentos cortos, no pocos largos.** Medido: misma tasa de acierto con un 30 % menos de tiempo. El atasco típico no es "no hay solución", es haberse metido por el pasillo equivocado al principio, y para eso lo que sirve es reintentar con otro desempate.
 
 Tasa de acierto en el Napoleón: **~60 % en 2 palos, ~10 % en 4 palos** (8 intentos × 150 000 nodos). Un 10 % basta y sobra para elegir 31 días, pero **no basta para un motor de pistas**: si algún día se quiere dar pistas en 4 palos, hará falta un solver mejor.
+
+**Un día publicado es un día congelado.** El generador se niega por su cuenta a tocar el pasado: cambiarle la semilla a un día ya jugado le cambia el reparto a quien lo jugó y su resultado guardado deja de corresponder con nada. Con una excepción, y solo en el primer mes: los días **anteriores al estreno de la función** no se le sirvieron nunca a nadie, así que sí se pueden generar. Va detrás de una opción explícita (`--estreno=AAAA-MM-DD`) para que sea una decisión consciente y quede escrita en el historial, no un caso especial escondido en el código. **En cualquier mes normal no se usa.**
+
+> Conviene estrenar el reto diario **el día 1 de un mes** y con la tabla ya generada. Estrenarlo a mitad de mes deja días huérfanos que hay que rescatar después.
 
 ### ⏳ `core/rewards/`, `core/analytics/`, `core/consent/`
 
@@ -268,7 +274,8 @@ Los datos que aún no existen se escriben como marcador literal **entre corchete
 7. **Las reglas no se muestran en cada carga.** Solo la primera visita, y accesibles desde un botón. Dos pantallas antes de jugar, todas las veces, es la fuga de retención más barata de tapar.
 8. **No escribas en un test un hecho que va a caducar.** Una comprobación decía "la tabla de semillas está vacía" —cierto el día que se escribió— y se puso en rojo sola en cuanto el solver la rellenó. Un test debe afirmar la **regla** (las semillas publicadas son válidas, un día sin entrada deriva la suya), nunca el estado del momento.
 9. **Un almacenamiento inyectable puede reventar.** El del navegador ya absorbe sus errores, pero en cuanto se permite inyectar otro hay que asumir lo peor y envolverlo: quedarse sin racha es un incordio, que el juego no arranque es perderlo. Este fallo lo cazó el test del reto diario antes de llegar a producción.
-10. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
+10. **Una regla de seguridad protege a alguien concreto: comprueba que ese alguien existe antes de aplicarla.** "Un día publicado es un día congelado" protege a quien ya jugó ese día. Di por intocables los 16 primeros días de agosto sin caer en que el reto diario **se había estrenado ese mismo día 16**: los 15 anteriores no los vio nadie y no había nada que proteger. Estuve a punto de dejar medio mes sin garantía por respetar una regla en el vacío. Antes de dar algo por irreversible, mira **desde cuándo existe la función** — el historial de git lo dice en un comando.
+11. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
 
 ---
 

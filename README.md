@@ -158,11 +158,12 @@ Una partida idéntica para todo el mundo cada día, que sale casi gratis porque 
 
 La semilla sale de una **tabla de datos** (`daily-seeds.ts`) y, para cualquier día que no esté en ella, se **deriva de la propia fecha** con un FNV-1a. Así el reto nunca falta aunque la tabla esté vacía, y la tabla queda como contrato para el solver que la validará más adelante.
 
-Tres detalles que no son obvios:
+Cuatro detalles que no son obvios:
 
 - **La fecha es local, no UTC.** La racha es del jugador, no del meridiano de Greenwich.
 - **El día anterior se calcula construyendo la fecha a mediodía.** Restar 24 horas se tuerce en los cambios de hora, y una racha no puede romperse porque el país haya adelantado el reloj.
 - **Que la partida en curso sea el reto de hoy se deduce de la semilla**, sin guardar ninguna marca ni añadir un campo al estado del motor.
+- **Qué días se pueden jugar lo decide el motor, no la interfaz.** `playableKeys(hoy)` va del día 1 del mes a hoy, y de ahí sale la lista del calendario: **el futuro no se abre nunca**, ni por un descuido de una pantalla ni porque la tabla de semillas tenga días por delante. Que exista la semilla del día 25 no abre el día 25 cuando estamos a 16.
 
 La racha cuenta **días jugados**, no victorias: en un solitario de dos barajas, una racha que solo contara victorias sería un cero permanente.
 
@@ -183,6 +184,8 @@ npm run seeds:bench -- 4 20 150000 8
 Búsqueda *best-first* sobre un modelo compacto (cartas como enteros, estado como cadena, tabla de estados vistos), guiada por las cartas que faltan por colocar. El hallazgo que más rindió al medirlo: **muchos intentos cortos con desempates distintos ganan más partidas que pocos intentos largos** — el atasco típico no es que no haya solución, es haberse metido por el pasillo equivocado al principio.
 
 Tasa de acierto medida: **~60 % en 2 palos** y **~10 % en 4 palos** con 8 intentos de 150 000 nodos. Suficiente de sobra, porque no hay que resolver un reparto dado sino encontrar 62 buenos al mes.
+
+**Un día publicado es un día congelado**: el generador se niega a tocar el pasado, porque cambiarle la semilla a un día ya jugado le cambiaría el reparto a quien lo jugó. La única excepción es el estreno de la función —los días anteriores no se le sirvieron nunca a nadie— y va detrás de una opción explícita, `--estreno=AAAA-MM-DD`, para que sea una decisión consciente y no un caso especial escondido.
 
 ### La fachada del ranking
 

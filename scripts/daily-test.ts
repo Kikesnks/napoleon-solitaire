@@ -112,6 +112,61 @@ check(
 );
 
 // ============================================================
+section("qué días se pueden jugar: del 1 del mes a hoy, y ni uno más");
+
+const cal = createDaily({ storagePrefix: "test.daily", storage: memoria(), seeds: DAILY_SEEDS });
+const dias16 = cal.playableKeys(dia("2026-08-16"));
+
+check("el día 16 se ofrecen 16 días", dias16.length === 16);
+check("empieza el día 1 del mes", dias16[0] === "2026-08-01");
+check("y acaba hoy", dias16[dias16.length - 1] === "2026-08-16");
+check("no se cuela ningún día futuro", dias16.every((f) => f <= "2026-08-16"));
+check("ni ningún día del mes anterior", dias16.every((f) => f >= "2026-08-01"));
+
+// La tabla de semillas va meses por delante del calendario a propósito: tener
+// la semilla del día 25 no puede abrir el día 25 cuando estamos a 16. La tabla
+// de esta comprobación es de mentira para que no dependa de cuánto tenga la
+// real, que crece cada mes.
+const conFuturo = createDaily({
+  storagePrefix: "test.daily",
+  storage: memoria(),
+  seeds: { "2026-08-25": { "2": 111, "4": 222 }, "2027-01-01": { "2": 333 } }
+});
+check(
+  "tener la semilla de un día futuro no abre ese día",
+  !conFuturo.playableKeys(dia("2026-08-16")).includes("2026-08-25") &&
+    !conFuturo.isPlayable("2026-08-25", dia("2026-08-16")) &&
+    !conFuturo.isPlayable("2027-01-01", dia("2026-08-16"))
+);
+check(
+  "y cuando llega el día, se abre",
+  conFuturo.isPlayable("2026-08-25", dia("2026-08-25"))
+);
+
+check("el día 1 del mes solo se ofrece ese día", cal.playableKeys(dia("2026-08-01")).length === 1);
+check("el último día del mes se ofrecen los 31", cal.playableKeys(dia("2026-08-31")).length === 31);
+check(
+  "al cambiar de mes se empieza de cero",
+  cal.playableKeys(dia("2026-09-01")).length === 1 &&
+    cal.playableKeys(dia("2026-09-01"))[0] === "2026-09-01"
+);
+
+section("isPlayable dice lo mismo, día a día");
+check("hoy se puede jugar", cal.isPlayable("2026-08-16", dia("2026-08-16")));
+check("ayer también", cal.isPlayable("2026-08-15", dia("2026-08-16")));
+check("el día 1 del mes también", cal.isPlayable("2026-08-01", dia("2026-08-16")));
+check("mañana NO", !cal.isPlayable("2026-08-17", dia("2026-08-16")));
+check("fin de mes NO", !cal.isPlayable("2026-08-31", dia("2026-08-16")));
+check("el mes pasado NO", !cal.isPlayable("2026-07-31", dia("2026-08-16")));
+check("el año que viene NO", !cal.isPlayable("2027-08-10", dia("2026-08-16")));
+check("una fecha con formato raro NO", !cal.isPlayable("2026-8-1", dia("2026-08-16")));
+check("una cadena cualquiera NO", !cal.isPlayable("mañana", dia("2026-08-16")));
+check(
+  "las dos vías coinciden siempre",
+  cal.playableKeys(dia("2026-08-16")).every((f) => cal.isPlayable(f, dia("2026-08-16")))
+);
+
+// ============================================================
 section("B3.3 · la racha cuenta y se corta bien");
 
 const r = createDaily({ storagePrefix: "test.daily", storage: memoria() });

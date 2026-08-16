@@ -58,6 +58,13 @@ export interface Daily {
   seedFor(date: string, variant: string): number;
   /** ¿La semilla viene de la tabla validada o es derivada? */
   isFromTable(date: string, variant: string): boolean;
+  /**
+   * Días que se pueden jugar: del **día 1 del mes en curso al día de hoy**,
+   * ambos incluidos. Nunca un día futuro y nunca un mes anterior.
+   */
+  playableKeys(now?: Date): string[];
+  /** ¿Ese día se puede jugar? La misma regla que `playableKeys`, para uno solo. */
+  isPlayable(date: string, now?: Date): boolean;
   /** Estado de la racha, ya calculado para el día de hoy. */
   streak(now?: Date): DailyStreak;
   /** Marca el reto de hoy como jugado y devuelve la racha resultante. */
@@ -163,6 +170,24 @@ export function createDaily(opts: DailyOptions): Daily {
     seedFor: (date, variant) => seeds[date]?.[variant] ?? deriveSeed(date, variant),
 
     isFromTable: (date, variant) => seeds[date]?.[variant] !== undefined,
+
+    // El calendario de retos pasados se sirve de aquí, y de ningún otro sitio.
+    // La regla vive en el motor a propósito: **el futuro no se abre nunca**, ni
+    // por un error de la interfaz ni porque la tabla de semillas tenga días por
+    // delante. Que una semilla exista no significa que su día se pueda jugar.
+    playableKeys(now = new Date()) {
+      const mes = keyOf(now).slice(0, 8); // "AAAA-MM-"
+      const out: string[] = [];
+      for (let d = 1; d <= now.getDate(); d++) out.push(`${mes}${String(d).padStart(2, "0")}`);
+      return out;
+    },
+
+    isPlayable(date, now = new Date()) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+      const hoy = keyOf(now);
+      // Las fechas ISO se ordenan bien como texto, así que basta comparar.
+      return date >= `${hoy.slice(0, 8)}01` && date <= hoy;
+    },
 
     streak(now = new Date()) {
       const s = readStreak();
