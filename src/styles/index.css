@@ -1677,6 +1677,14 @@ button {
   opacity: 0.9;
 }
 
+.overlay__daily-collection {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.75;
+  line-height: 1.5;
+}
+
 .suit-select__section {
   margin: 14px 0 0;
   font-size: 12px;
@@ -1716,6 +1724,21 @@ button {
   /* El borde también se anima: sin esto el amarillo del hover aparecía de
      golpe, mientras que en las tarjetas de partida libre entra suave. */
   transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+/* El avance del mes, una cuenta por dificultad. En su propia línea porque en
+   francés —"2 couleurs", "4 couleurs"— junto a la racha no cabía a 320 px. Se
+   deja envolver en dos renglones antes que salirse. */
+.suit-select__daily-collection {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+
+.suit-select__daily-count {
+  white-space: nowrap; /* "15/31 - 2 palos" no se parte por la mitad */
 }
 
 .suit-select__daily-replay {

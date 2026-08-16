@@ -13,8 +13,16 @@ export type { DailyVariant } from "./daily-seeds.js";
 /** El modo de palos, como variante del reto. Son dos retos distintos por día. */
 export const variantOf = (suitMode: SuitMode): DailyVariant => (suitMode === 2 ? "2" : "4");
 
-/** Los dos retos que hay cada día. Es lo que hace que "12 de 16" tenga sentido. */
+/** Las dos dificultades en que se puede hacer el reto de cada día. */
 export const DAILY_VARIANTS: readonly DailyVariant[] = ["2", "4"];
+
+/** El avance del mes en UNA dificultad: `15/31` en 2 palos, por ejemplo. */
+export interface DailyVariantProgress {
+  variant: DailyVariant;
+  suitMode: SuitMode;
+  done: number;
+  total: number;
+}
 
 export const daily = createDaily({
   storagePrefix: "solnap.daily",

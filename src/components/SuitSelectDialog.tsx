@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Lang } from "../i18n/strings";
 import { STRINGS } from "../i18n/strings";
 import type { SuitMode } from "../game";
-import type { DailyCollection, DailyResult } from "../game/daily";
+import type { DailyResult, DailyVariantProgress } from "../game/daily";
 import { DailyCalendar } from "./DailyCalendar";
 import { SuitIcon } from "./SuitIcon";
 
@@ -16,8 +16,8 @@ interface Props {
   dailyStreak: number;
   /** ¿Ya se ha jugado el reto de hoy? Solo informa; se puede repetir. */
   dailyPlayedToday: boolean;
-  /** Cuántos retos del mes lleva hechos, de cuántos hay. Se cuenta aparte de la racha. */
-  dailyCollection: DailyCollection;
+  /** El avance del mes en cada dificultad. Se cuenta aparte de la racha. */
+  dailyCollections: readonly DailyVariantProgress[];
   /** Días jugables del mes. Vienen del motor: del 1 a hoy, nunca el futuro. */
   dailyDays: readonly string[];
   dailyResultsByDate: Readonly<Record<string, readonly DailyResult[]>>;
@@ -32,7 +32,7 @@ export function SuitSelectDialog({
   onCancel,
   dailyStreak,
   dailyPlayedToday,
-  dailyCollection,
+  dailyCollections,
   dailyDays,
   dailyResultsByDate,
   dailyTodayKey,
@@ -153,8 +153,13 @@ export function SuitSelectDialog({
             La racha solo la consigue quien vuelve cada día, y es lo que empuja
             a volver; la colección es lo que le da algo que hacer hoy.
 
-            La colección va por DÍAS y su total es el mes entero. Hacer las dos
-            dificultades del mismo día no suma dos: el reto del día es uno.
+            La colección va por DÍAS y su total es el mes entero, así que ningún
+            contador puede pasar de 28, 29, 30 o 31. Y va SEPARADA POR
+            DIFICULTAD: cada una tiene su propio avance, y hacer las dos el
+            mismo día suma en las dos.
+
+            En dos líneas y no en una: juntas se salían del panel a 320 px en
+            francés, donde "2 couleurs" es bastante más largo que "2 palos".
           */}
           <p className="suit-select__daily-streak">
             {dailyStreak > 0 && (
@@ -162,12 +167,18 @@ export function SuitSelectDialog({
                 🔥 {t.dailyStreak}: {dailyStreak} {dailyStreak === 1 ? t.day : t.days}
               </span>
             )}
-            {dailyStreak > 0 && dailyCollection.total > 0 && <span> · </span>}
-            {dailyCollection.total > 0 && (
-              <span>
-                🗓️ {dailyCollection.done}/{dailyCollection.total} {t.dailyCollected}
+          </p>
+          <p className="suit-select__daily-collection">
+            🗓️{" "}
+            {dailyCollections.map((c, i) => (
+              <span key={c.variant} className="suit-select__daily-count">
+                {i > 0 && <span aria-hidden="true"> · </span>}
+                <strong>
+                  {c.done}/{c.total}
+                </strong>{" "}
+                {c.suitMode === 2 ? t.twoSuits : t.fourSuits}
               </span>
-            )}
+            ))}
           </p>
           {alreadyPlayed && (
             <p className="suit-select__daily-replay">

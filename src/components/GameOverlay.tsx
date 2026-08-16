@@ -2,7 +2,7 @@ import type { Lang } from "../i18n/strings";
 import { STRINGS } from "../i18n/strings";
 import { formatElapsed } from "../hooks/useTimer";
 import type { Status } from "../game";
-import type { DailyCollection } from "../game/daily";
+import type { DailyVariantProgress } from "../game/daily";
 
 interface Props {
   lang: Lang;
@@ -16,8 +16,8 @@ interface Props {
   todayKey: string;
   /** Días seguidos jugando el reto. */
   dailyStreak: number;
-  /** Retos del mes hechos y disponibles. Se cuenta aparte de la racha. */
-  dailyCollection: DailyCollection;
+  /** El avance del mes en cada dificultad. Se cuenta aparte de la racha. */
+  dailyCollections: readonly DailyVariantProgress[];
 }
 
 export function GameOverlay({
@@ -29,7 +29,7 @@ export function GameOverlay({
   dailyDate,
   todayKey,
   dailyStreak,
-  dailyCollection
+  dailyCollections
 }: Props) {
   if (status === "playing") return null;
   const t = STRINGS[lang];
@@ -44,22 +44,31 @@ export function GameOverlay({
       <div className={`overlay__panel ${won ? "overlay__panel--win" : "overlay__panel--lose"}`}>
         <h2 className="overlay__title">{won ? t.won : t.lost}</h2>
         {wasDaily && (
-          <p className="overlay__daily">
-            🗓️ {t.dailyTitle}
-            {dayLabel}
-            {dailyStreak > 0 && (
-              <>
-                {" · 🔥 "}
-                {t.dailyStreak}: {dailyStreak} {dailyStreak === 1 ? t.day : t.days}
-              </>
-            )}
-            {dailyCollection.total > 0 && (
-              <>
-                {" · "}
-                {dailyCollection.done}/{dailyCollection.total} {t.dailyCollected}
-              </>
-            )}
-          </p>
+          <>
+            <p className="overlay__daily">
+              🗓️ {t.dailyTitle}
+              {dayLabel}
+              {dailyStreak > 0 && (
+                <>
+                  {" · 🔥 "}
+                  {t.dailyStreak}: {dailyStreak} {dailyStreak === 1 ? t.day : t.days}
+                </>
+              )}
+            </p>
+            {/* El avance del mes, una cuenta por dificultad. En su propia línea:
+                junto a la racha y al día del reto no cabía en un panel de 360 px. */}
+            <p className="overlay__daily-collection">
+              {dailyCollections.map((c, i) => (
+                <span key={c.variant}>
+                  {i > 0 && <span aria-hidden="true"> · </span>}
+                  <strong>
+                    {c.done}/{c.total}
+                  </strong>{" "}
+                  {c.suitMode === 2 ? t.twoSuits : t.fourSuits}
+                </span>
+              ))}
+            </p>
+          </>
         )}
         <p className="overlay__message">{won ? t.wonMessage : t.lostMessage}</p>
         <dl className="overlay__stats">

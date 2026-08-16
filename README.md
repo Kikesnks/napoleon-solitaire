@@ -73,7 +73,7 @@ Al no depender de React ni del DOM, cualquier framework de tests puede importar 
 
 Dos retos cada día —uno de 2 palos y otro de 4—, iguales para todo el mundo, con racha de días jugados y el mejor resultado de cada día guardado en el dispositivo. Las semillas las valida un solver antes de publicarlas: **de cada día publicado existe una partida ganada comprobada**.
 
-Un calendario del mes en curso deja jugar también **los días ya pasados**, del 1 a hoy. El futuro no se abre nunca. La racha y la colección se cuentan por separado: la racha mide los días que el jugador ha venido, la colección cuántos retos del mes lleva.
+Un calendario del mes en curso deja jugar también **los días ya pasados**, del 1 a hoy. El futuro no se abre nunca. La racha y la colección se cuentan por separado: la racha mide los días que el jugador ha venido; la colección, cuántos días del mes lleva hechos **en cada dificultad** (`15/31 · 2 palos · 12/31 · 4 palos`). El total es siempre el del mes, así que ninguna cuenta puede enseñar un número que no quepa en él.
 
 ### Ranking global
 

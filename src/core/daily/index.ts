@@ -126,8 +126,14 @@ export interface Daily {
   resultsOf(date: string): DailyResult[];
   /** La partida que produjo el mejor resultado de un reto, si se guardó. */
   replayOf(date: string, variant: string): DailyReplay | null;
-  /** Cuántos retos del mes en curso lleva hechos, de cuántos hay disponibles. */
-  collection(now?: Date): DailyCollection;
+  /**
+   * Cuántos retos del mes en curso lleva hechos, de cuántos hay.
+   *
+   * Sin `variant` cuenta los días en que hizo el reto en cualquier dificultad.
+   * Con `variant`, solo los que hizo en esa: así cada dificultad tiene su
+   * propio avance y hacer las dos el mismo día suma en las dos.
+   */
+  collection(now?: Date, variant?: string): DailyCollection;
 }
 
 const DEFAULT_STORAGE: DailyStorage = { get: readPref, set: writePref };
@@ -334,20 +340,20 @@ export function createDaily(opts: DailyOptions): Daily {
     replayOf: (date, variant) =>
       readReplays().find((x) => sameChallenge(x, date, variant)) ?? null,
 
-    collection(now = new Date()) {
+    collection(now = new Date(), variant?: string) {
       // El día 0 del mes siguiente es el último del actual: 28, 29, 30 o 31.
       const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const mes = keyOf(now).slice(0, 8); // "AAAA-MM-"
-      // Por DÍA, no por resultado: hacer las dos dificultades del mismo día no
-      // cuenta dos veces, y un almacenamiento con duplicados de una versión
-      // anterior tampoco puede inflar la cuenta.
+      const cuenta = (r: DailyResult): boolean =>
+        variant !== undefined
+          ? r.variant === variant
+          : variants.length === 0 || variants.includes(r.variant);
+      // Por DÍA, no por resultado: repetir un reto no cuenta dos veces, y un
+      // almacenamiento con duplicados de una versión anterior tampoco puede
+      // inflar la cuenta. Así el número nunca puede pasar de los días del mes.
       const dias = new Set(
         readResults()
-          .filter(
-            (r) =>
-              r.date.slice(0, 8) === mes &&
-              (variants.length === 0 || variants.includes(r.variant))
-          )
+          .filter((r) => r.date.slice(0, 8) === mes && cuenta(r))
           .map((r) => r.date)
       );
       return { done: dias.size, total };

@@ -16,7 +16,14 @@ import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
 import { STRINGS } from "./i18n/strings";
 import type { SuitMode, Status } from "./game";
-import { challengeDateOf, daily, seedForDate, variantOf, type DailyResult } from "./game/daily";
+import {
+  challengeDateOf,
+  daily,
+  seedForDate,
+  variantOf,
+  DAILY_VARIANTS,
+  type DailyResult
+} from "./game/daily";
 import {
   boardId,
   leaderboardScope,
@@ -102,7 +109,20 @@ export default function App() {
   // guardar ninguna marca extra ni tocar el estado del motor.
   const [dailyTick, setDailyTick] = useState(0);
   const dailyStreak = useMemo(() => daily.streak(), [dailyTick]);
-  const dailyCollection = useMemo(() => daily.collection(), [dailyTick]);
+  /**
+   * El avance del mes, uno por dificultad: `15/31` en 2 palos y `12/31` en 4.
+   * Cada uno sobre los días del mes, así que ninguno puede enseñar un número
+   * imposible, y hacer las dos dificultades de un día suma en las dos.
+   */
+  const dailyCollections = useMemo(
+    () =>
+      DAILY_VARIANTS.map((variant) => ({
+        variant,
+        suitMode: (variant === "2" ? 2 : 4) as SuitMode,
+        ...daily.collection(undefined, variant)
+      })),
+    [dailyTick]
+  );
   const dailyTodayKey = useMemo(() => daily.todayKey(), [dailyTick]);
   /** Los días jugables los decide el motor: del 1 del mes a hoy, nunca el futuro. */
   const dailyDays = useMemo(() => daily.playableKeys(), [dailyTick]);
@@ -368,7 +388,7 @@ export default function App() {
         dailyDate={dailyGameDate}
         todayKey={dailyTodayKey}
         dailyStreak={dailyStreak.current}
-        dailyCollection={dailyCollection}
+        dailyCollections={dailyCollections}
       />
       {showRules && (
         <Instructions
@@ -387,7 +407,7 @@ export default function App() {
           onCancel={handleSuitCancel}
           dailyStreak={dailyStreak.current}
           dailyPlayedToday={dailyStreak.playedToday}
-          dailyCollection={dailyCollection}
+          dailyCollections={dailyCollections}
           dailyDays={dailyDays}
           dailyResultsByDate={dailyResultsByDate}
           dailyTodayKey={dailyTodayKey}

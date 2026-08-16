@@ -247,10 +247,27 @@ col.recordResult({ date: "2026-08-16", variant: "2", score: 100, won: false });
 check("un reto hecho cuenta 1", col.collection(hoy16).done === 1);
 
 col.recordResult({ date: "2026-08-16", variant: "4", score: 100, won: false });
-check("hacer las dos dificultades del mismo día sigue contando 1", col.collection(hoy16).done === 1);
+check("hacer las dos dificultades del mismo día sigue contando 1 día", col.collection(hoy16).done === 1);
 
 col.recordResult({ date: "2026-08-16", variant: "2", score: 500, won: true });
 check("repetir un reto tampoco lo cuenta dos veces", col.collection(hoy16).done === 1);
+
+section("cada dificultad lleva su propio avance");
+check("2 palos: 1 de 31", col.collection(hoy16, "2").done === 1 && col.collection(hoy16, "2").total === 31);
+check("4 palos: 1 de 31", col.collection(hoy16, "4").done === 1);
+
+col.recordResult({ date: "2026-08-14", variant: "2", score: 100, won: false });
+check("un día más solo en 2 palos: 2 de 31", col.collection(hoy16, "2").done === 2);
+check("...y 4 palos se queda en 1", col.collection(hoy16, "4").done === 1);
+check("el total por dificultad sigue siendo el del mes", col.collection(hoy16, "4").total === 31);
+check(
+  "una dificultad que no existe no cuenta nada",
+  col.collection(hoy16, "8").done === 0 && col.collection(hoy16, "8").total === 31
+);
+check(
+  "ninguna dificultad puede pasar del total",
+  (["2", "4"] as const).every((v) => col.collection(hoy16, v).done <= col.collection(hoy16, v).total)
+);
 
 // El caso que describió el propietario: alguien entra el día 16 y se hace todo
 // lo que puede de una sentada. Colección al día, racha de 1.

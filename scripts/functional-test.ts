@@ -445,21 +445,42 @@ async function main(): Promise<void> {
       fail(`el calendario ofrece días imposibles: ${futuros.join(", ")}`);
     }
 
-    // El total es el del MES ENTERO —28, 29, 30 o 31—, nunca más: un contador
+    // La colección va en su propia línea y SEPARADA POR DIFICULTAD. El total de
+    // cada una son los días del mes —28, 29, 30 o 31—, nunca más: un contador
     // que enseñaba "32 retos" es imposible y se ve a la primera.
     const hoyDate = new Date();
     const diasDelMes = new Date(hoyDate.getFullYear(), hoyDate.getMonth() + 1, 0).getDate();
-    const conteoColeccion = /(\d+)\s*\/\s*(\d+)/.exec(textoRacha);
-    const totalMostrado = conteoColeccion ? Number(conteoColeccion[2]) : -1;
-    if (totalMostrado === diasDelMes) {
-      ok(`B6.3 la colección se muestra aparte de la racha: "${conteoColeccion?.[0]}"`);
+    const textoColeccion = (await page.textContent(".suit-select__daily-collection")) ?? "";
+    const cuentas = [...textoColeccion.matchAll(/(\d+)\s*\/\s*(\d+)/g)];
+
+    if (cuentas.length === 2) {
+      ok(`B6.3 la colección se muestra por dificultad: "${textoColeccion.replace(/\s+/g, " ").trim()}"`);
     } else {
-      fail(`la colección dice ${totalMostrado} y el mes tiene ${diasDelMes} días: "${textoRacha.trim()}"`);
+      fail(`B6.3 esperaba 2 cuentas y hay ${cuentas.length}: "${textoColeccion.trim()}"`);
     }
-    if (totalMostrado >= 28 && totalMostrado <= 31) {
-      ok(`B6.6 el total cabe en un mes (${totalMostrado})`);
+
+    const totalesMal = cuentas.filter((c) => Number(c[2]) !== diasDelMes);
+    if (cuentas.length > 0 && totalesMal.length === 0) {
+      ok(`B6.6 cada total es el del mes (${diasDelMes} días)`);
     } else {
-      fail(`B6.6 el total ${totalMostrado} no puede ser el de ningún mes`);
+      fail(`B6.6 hay totales que no son ${diasDelMes}: ${totalesMal.map((c) => c[0]).join(", ")}`);
+    }
+
+    // La comprobación que habría cazado el "32": el número tiene un techo real.
+    const imposibles = cuentas.filter(
+      (c) => Number(c[2]) < 28 || Number(c[2]) > 31 || Number(c[1]) > Number(c[2])
+    );
+    if (imposibles.length === 0) {
+      ok("B6.9 ninguna cuenta enseña un número imposible");
+    } else {
+      fail(`B6.9 cuentas imposibles: ${imposibles.map((c) => c[0]).join(", ")}`);
+    }
+
+    // Y que la racha no se haya llevado por delante la colección al separarlas.
+    if (/racha|streak|série/i.test(textoRacha)) {
+      ok("B6.10 la racha sigue en su propia línea");
+    } else {
+      fail(`B6.10 la racha ha desaparecido: "${textoRacha.trim()}"`);
     }
 
     // Un día pasado: se elige en el calendario y luego la dificultad. Si el mes
