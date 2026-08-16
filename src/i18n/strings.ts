@@ -97,6 +97,9 @@ export interface UIStrings {
   lbColDate: string;
   lbColSuits: string;
   lbEmpty: string;
+  /** Rótulo de ámbito: de dónde salen las puntuaciones que se están viendo. */
+  lbScopeLocal: string;
+  lbScopeLocalHint: string;
   lbYourScore: string;
   lbLoading: string;
   lbError: string;
@@ -169,6 +172,8 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lbColDate: "Fecha",
     lbColSuits: "Palos",
     lbEmpty: "Aún no hay partidas registradas",
+    lbScopeLocal: "Solo en este dispositivo",
+    lbScopeLocalHint: "Aquí se guardan tus partidas, no las de otros jugadores",
     lbYourScore: "Tu puntuación",
     lbLoading: "Cargando ranking…",
     lbError: "No se ha podido conectar con el servidor",
@@ -241,6 +246,8 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lbColDate: "Date",
     lbColSuits: "Suits",
     lbEmpty: "No games recorded yet",
+    lbScopeLocal: "On this device only",
+    lbScopeLocalHint: "This keeps your own games, not other players'",
     lbYourScore: "Your score",
     lbLoading: "Loading leaderboard…",
     lbError: "Could not connect to the server",
@@ -311,6 +318,8 @@ export const STRINGS: Record<Lang, UIStrings> = {
     lbColDate: "Date",
     lbColSuits: "Couleurs",
     lbEmpty: "Aucune partie enregistrée pour le moment",
+    lbScopeLocal: "Sur cet appareil uniquement",
+    lbScopeLocalHint: "Ici on garde tes parties, pas celles des autres joueurs",
     lbYourScore: "Votre score",
     lbLoading: "Chargement du classement…",
     lbError: "Impossible de se connecter au serveur",

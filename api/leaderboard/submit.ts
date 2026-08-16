@@ -13,6 +13,7 @@ import { reduceAction } from "../../src/game/rules.js";
 import type { Action } from "../../src/game/rules.js";
 import {
   LEADERBOARD_MAX,
+  parseBoardId,
   type ErrorResponse,
   type LeaderboardEntry,
   type SubmitPayload,
@@ -33,7 +34,7 @@ function isValidPayload(x: unknown): x is SubmitPayload {
   const p = x as Record<string, unknown>;
   if (typeof p.name !== "string" || p.name.trim().length === 0 || p.name.length > MAX_NAME)
     return false;
-  if (p.category !== "won" && p.category !== "lost") return false;
+  if (parseBoardId(p.category) === null) return false;
   if (typeof p.score !== "number" || !Number.isFinite(p.score) || p.score < 0) return false;
   if (p.suitMode !== 2 && p.suitMode !== 4) return false;
   if (typeof p.seed !== "number" || !Number.isFinite(p.seed)) return false;
@@ -80,11 +81,24 @@ export default async function handler(
     return fail(res, 400, "La simulación de la partida falló: acciones inválidas");
   }
 
-  if (simulated.status !== payload.category) {
+  // La tabla declarada tiene dos mitades y se comprueban las DOS contra la
+  // simulación. Sin la segunda, cualquiera podría mandar una partida de 2
+  // palos —donde se puntúa más alto— a la tabla de 4 y encabezarla.
+  const tabla = parseBoardId(payload.category);
+  if (!tabla) return fail(res, 400, "Payload inválido");
+
+  if (simulated.status !== tabla.category) {
     return fail(
       res,
       400,
-      `Status declarado (${payload.category}) no coincide con la simulación (${simulated.status})`
+      `Status declarado (${tabla.category}) no coincide con la simulación (${simulated.status})`
+    );
+  }
+  if (tabla.suitMode !== payload.suitMode || simulated.suitMode !== payload.suitMode) {
+    return fail(
+      res,
+      400,
+      `Dificultad declarada (${tabla.suitMode}) no coincide con la partida (${simulated.suitMode})`
     );
   }
   if (simulated.score !== payload.score) {
@@ -102,14 +116,16 @@ export default async function handler(
   ).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
 
   try {
-    await insertEntry(payload.category, {
+    // En la base de datos se sigue guardando igual que siempre: `category` con
+    // el desenlace y `suit_mode` aparte. Separar las tablas no ha migrado nada.
+    await insertEntry(tabla.category, {
       name: payload.name.trim(),
       score: payload.score,
       suit_mode: payload.suitMode,
       date,
       ts: now
     });
-    const rows = await selectTop(payload.category, LEADERBOARD_MAX);
+    const rows = await selectTop(tabla.category, tabla.suitMode, LEADERBOARD_MAX);
     const entries: LeaderboardEntry[] = rows.map((r) => ({
       name: r.name,
       score: r.score,

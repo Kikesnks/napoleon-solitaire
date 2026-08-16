@@ -17,7 +17,14 @@ import { useFirstRun, useLanguage } from "./i18n/useLanguage";
 import { STRINGS } from "./i18n/strings";
 import type { SuitMode, Status } from "./game";
 import { challengeDateOf, daily, seedForDate, variantOf, type DailyResult } from "./game/daily";
-import { qualifies, submitScore, type LeaderboardCategory, type LeaderboardEntry } from "./game/leaderboard";
+import {
+  boardId,
+  leaderboardScope,
+  qualifies,
+  submitScore,
+  type LeaderboardCategory,
+  type LeaderboardEntry
+} from "./game/leaderboard";
 
 /** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
 const DEAL_ANIMATION_MS = 1400;
@@ -74,7 +81,14 @@ export default function App() {
     | { step: "idle" }
     | { step: "name-entry"; category: LeaderboardCategory; score: number; suitMode: SuitMode }
     | { step: "submitting"; category: LeaderboardCategory }
-    | { step: "show-table"; category: LeaderboardCategory; entries: LeaderboardEntry[]; highlightTs: number }
+    | {
+        step: "show-table";
+        category: LeaderboardCategory;
+        suitMode: SuitMode;
+        entries: LeaderboardEntry[];
+        highlightTs: number;
+        scope: "global" | "local";
+      }
     | { step: "error"; category: LeaderboardCategory; score: number; suitMode: SuitMode; message: string };
 
   const [lbPhase, setLbPhase] = useState<LbPhase>({ step: "idle" });
@@ -137,8 +151,10 @@ export default function App() {
     }
 
     const category: LeaderboardCategory = cur === "won" ? "won" : "lost";
+    // La dificultad va siempre: son cuatro tablas y una puntuación de 4 palos
+    // comparada contra el top de 2 palos casi nunca clasificaría.
     let cancelled = false;
-    void qualifies(category, state.score)
+    void qualifies(category, state.score, state.suitMode)
       .then((ok) => {
         if (cancelled || !ok) return;
         setLbPhase({ step: "name-entry", category, score: state.score, suitMode: state.suitMode });
@@ -160,7 +176,7 @@ export default function App() {
     try {
       const entries = await submitScore({
         name,
-        category,
+        category: boardId(category, suitMode),
         score,
         suitMode,
         seed: state.seed,
@@ -173,8 +189,10 @@ export default function App() {
       setLbPhase({
         step: "show-table",
         category,
+        suitMode,
         entries,
-        highlightTs: mine ? mine.ts : -1
+        highlightTs: mine ? mine.ts : -1,
+        scope: leaderboardScope()
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -415,14 +433,20 @@ export default function App() {
         <LeaderboardDialog
           lang={lang}
           category={lbPhase.category}
+          suitMode={lbPhase.suitMode}
           entries={lbPhase.entries}
           highlightTs={lbPhase.highlightTs}
+          scope={lbPhase.scope}
           onAccept={handleLbAccept}
         />
       )}
       {showPrivacy && <PrivacyPolicy lang={lang} onClose={() => setShowPrivacy(false)} />}
       {showLbViewer && (
-        <LeaderboardViewer lang={lang} onClose={() => setShowLbViewer(false)} />
+        <LeaderboardViewer
+          lang={lang}
+          initialSuitMode={state.suitMode}
+          onClose={() => setShowLbViewer(false)}
+        />
       )}
     </div>
   );

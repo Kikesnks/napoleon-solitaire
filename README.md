@@ -77,7 +77,7 @@ Un calendario del mes en curso deja jugar también **los días ya pasados**, del
 
 ### Ranking global
 
-Tabla separada para partidas ganadas y para partidas terminadas sin ganar, persistida en Supabase a través de funciones serverless. Si el backend no responde —o no existe, como en un build embebido— cae al ranking local **sin mostrar ningún error técnico al jugador**.
+Cuatro tablas —ganadas y perdidas, por cada dificultad— persistidas en Supabase a través de funciones serverless. Si el backend no responde —o no existe, como en un build embebido— cae al ranking local **sin mostrar ningún error técnico al jugador**, y entonces la tabla lo dice: *"Solo en este dispositivo"*.
 
 ### Pendiente
 

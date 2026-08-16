@@ -37,14 +37,24 @@ function headers(env: Env, extra?: Record<string, string>) {
   };
 }
 
+/**
+ * Top de una tabla. El filtro por dificultad va **en la consulta**, no después:
+ * pedir el top mezclado y quedarse con los de 4 palos devolvería una tabla
+ * vacía en cuanto los diez primeros fueran de 2 palos.
+ *
+ * La base de datos no cambió para esto: `category` y `suit_mode` ya eran dos
+ * columnas, así que separar las tablas no ha movido ni una fila.
+ */
 export async function selectTop(
   category: LeaderboardCategory,
+  suitMode: 2 | 4,
   limit: number
 ): Promise<DbEntry[]> {
   const env = readEnv();
   const params = new URLSearchParams({
     select: "name,score,suit_mode,date,ts",
     category: `eq.${category}`,
+    suit_mode: `eq.${suitMode}`,
     order: "score.desc,ts.asc",
     limit: String(limit)
   });

@@ -1,14 +1,14 @@
-// GET /api/leaderboard?category=won|lost
-// Devuelve el top 10 de la categoría solicitada desde Supabase.
+// GET /api/leaderboard?category=won-2|won-4|lost-2|lost-4
+// Devuelve el top 10 de esa tabla desde Supabase.
+//
+// La categoría trae el desenlace Y la dificultad, porque son cuatro tablas
+// separadas: con 2 palos se puntúa más alto y mezclarlas premia la dificultad
+// baja. Aquí se descompone y las dos mitades van al filtro de la consulta.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { selectTop } from "../_shared/supabase.js";
-import { LEADERBOARD_MAX } from "../../src/game/leaderboard-types.js";
-import type {
-  ErrorResponse,
-  LeaderboardCategory,
-  LeaderboardEntry
-} from "../../src/game/leaderboard-types";
+import { LEADERBOARD_MAX, parseBoardId } from "../../src/game/leaderboard-types.js";
+import type { ErrorResponse, LeaderboardEntry } from "../../src/game/leaderboard-types";
 
 export default async function handler(
   req: VercelRequest,
@@ -19,17 +19,17 @@ export default async function handler(
     return res.status(405).json(err);
   }
 
-  const cat = req.query.category;
-  if (cat !== "won" && cat !== "lost") {
+  const tabla = parseBoardId(req.query.category);
+  if (!tabla) {
     const err: ErrorResponse = {
       ok: false,
-      error: "category debe ser 'won' o 'lost'"
+      error: "category debe ser 'won-2', 'won-4', 'lost-2' o 'lost-4'"
     };
     return res.status(400).json(err);
   }
 
   try {
-    const rows = await selectTop(cat as LeaderboardCategory, LEADERBOARD_MAX);
+    const rows = await selectTop(tabla.category, tabla.suitMode, LEADERBOARD_MAX);
     const entries: LeaderboardEntry[] = rows.map((r) => ({
       name: r.name,
       score: r.score,

@@ -1399,6 +1399,85 @@ button {
   color: #000;
 }
 
+/* Selector de dificultad: son cuatro tablas (ganadas/perdidas × 2/4 palos), y
+   comparar 2 con 4 palos no tiene sentido porque con 2 se puntúa más alto.
+   Va como segunda fila y más discreto que las pestañas: la división principal
+   sigue siendo ganadas/perdidas. */
+.lb-viewer__suits {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.lb-viewer__suit {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: transparent;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.lb-viewer__header--won .lb-viewer__suit {
+  border-color: rgba(240, 224, 160, 0.35);
+  color: rgba(240, 224, 160, 0.75);
+}
+
+.lb-viewer__suit:hover,
+.lb-viewer__suit:focus-visible {
+  border-color: #0b3d1f;
+  outline: none;
+}
+
+.lb-viewer__header--won .lb-viewer__suit:hover,
+.lb-viewer__header--won .lb-viewer__suit:focus-visible {
+  border-color: #c8a000;
+}
+
+.lb-viewer__suit.is-active {
+  background: #0b3d1f;
+  border-color: #0b3d1f;
+  color: #fff;
+}
+
+.lb-viewer__header--won .lb-viewer__suit.is-active {
+  background: #c8a000;
+  border-color: #c8a000;
+  color: #000;
+}
+
+/* Qué tabla se está viendo, en el diálogo de fin de partida. */
+.lb__board-label {
+  margin: -4px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* Rótulo de ámbito: solo aparece cuando el ranking es el del dispositivo. */
+.lb__scope {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.75;
+  text-align: center;
+}
+
+.lb__scope-hint {
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
 .lb-viewer__body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;

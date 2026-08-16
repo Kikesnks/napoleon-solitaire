@@ -171,6 +171,35 @@ async function main(): Promise<void> {
     const leaked = leaks.filter((s) => lbText.includes(s));
     if (leaked.length === 0) ok("T1.2 el ranking no muestra ningún mensaje de error técnico");
     else fail(`T1.2 el ranking filtra errores al jugador: ${JSON.stringify(leaked)}`);
+
+    // B8 · En un portal el ranking es el del dispositivo, y hay que DECIRLO.
+    // Una tabla titulada "Liga de Campeones" con tres nombres que son todos
+    // tuyos, sin explicar por qué, es engañosa. Aquí es donde se ve: este es
+    // justo el build donde no hay servidor propio al que llamar.
+    const rotulo = await page.$(".lb__scope");
+    if (rotulo) {
+      const texto = ((await rotulo.textContent()) ?? "").trim();
+      ok(`B8.11 el ranking avisa de que es solo del dispositivo: "${texto}"`);
+    } else {
+      fail("B8.11 el ranking local no avisa al jugador de que solo tiene sus partidas");
+    }
+
+    // B8 · Las cuatro tablas también existen en el portal.
+    const selectores = await page.$$(".lb-viewer__suit");
+    if (selectores.length === 2) {
+      await selectores[0].click(); // 2 palos
+      await page.waitForTimeout(200);
+      const trasCambiar = (await page.textContent(".lb-viewer")) ?? "";
+      const filtra = leaks.filter((s) => trasCambiar.includes(s));
+      if (filtra.length === 0) {
+        ok("B8.12 se puede cambiar de dificultad sin que asome ningún error");
+      } else {
+        fail(`B8.12 al cambiar de dificultad filtra: ${JSON.stringify(filtra)}`);
+      }
+    } else {
+      fail(`B8.12 esperaba 2 selectores de dificultad, hay ${selectores.length}`);
+    }
+
     await page.click(".lb-viewer button.hud__btn--primary");
     await page.waitForTimeout(150);
 

@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import {
   fetchLeaderboard,
+  leaderboardScope,
   type LeaderboardCategory,
   type LeaderboardEntry
 } from "../game/leaderboard";
+import type { SuitMode } from "../game";
 import type { Lang } from "../i18n/strings";
 import { STRINGS } from "../i18n/strings";
-import { LbTable } from "./LeaderboardDialog";
+import { LbScopeNote, LbTable } from "./LeaderboardDialog";
 
 interface Props {
   lang: Lang;
+  /** Dificultad que se enseña al abrir: la que el jugador tiene elegida. */
+  initialSuitMode: SuitMode;
   onClose(): void;
 }
 
@@ -18,10 +22,16 @@ interface Props {
 // en pantalla sólo significaría que algo se nos ha escapado.
 type FetchState =
   | { kind: "loading" }
-  | { kind: "ok"; entries: LeaderboardEntry[] };
+  | { kind: "ok"; entries: LeaderboardEntry[]; scope: "global" | "local" };
 
-export function LeaderboardViewer({ lang, onClose }: Props) {
+export function LeaderboardViewer({ lang, initialSuitMode, onClose }: Props) {
   const [tab, setTab] = useState<LeaderboardCategory>("won");
+  /**
+   * Cuatro tablas, no dos: con 2 palos se puntúa bastante más alto, así que
+   * mezclarlas premiaba la dificultad baja y comparaba lo incomparable. Se
+   * abre por la dificultad que el jugador usa, que es la tabla que le importa.
+   */
+  const [suitMode, setSuitMode] = useState<SuitMode>(initialSuitMode);
   const [state, setState] = useState<FetchState>({ kind: "loading" });
   const t = STRINGS[lang];
   const isWon = tab === "won";
@@ -29,17 +39,19 @@ export function LeaderboardViewer({ lang, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     setState({ kind: "loading" });
-    fetchLeaderboard(tab)
+    fetchLeaderboard(tab, suitMode)
       .then((entries) => {
-        if (!cancelled) setState({ kind: "ok", entries });
+        // El ámbito se lee DESPUÉS de la consulta: hasta que no se ha intentado
+        // el servidor no se sabe si ha respondido él o el respaldo local.
+        if (!cancelled) setState({ kind: "ok", entries, scope: leaderboardScope() });
       })
       .catch(() => {
-        if (!cancelled) setState({ kind: "ok", entries: [] });
+        if (!cancelled) setState({ kind: "ok", entries: [], scope: leaderboardScope() });
       });
     return () => {
       cancelled = true;
     };
-  }, [tab]);
+  }, [tab, suitMode]);
 
   return (
     <div className="overlay lb-viewer" role="dialog" aria-modal="true" aria-labelledby="lb-viewer-title">
@@ -48,7 +60,7 @@ export function LeaderboardViewer({ lang, onClose }: Props) {
           <h2 id="lb-viewer-title" className="lb-viewer__title">
             {t.leaderboard}
           </h2>
-          <div className="lb-viewer__tabs" role="tablist">
+          <div className="lb-viewer__tabs" role="tablist" aria-label={t.leaderboard}>
             <button
               type="button"
               role="tab"
@@ -68,12 +80,29 @@ export function LeaderboardViewer({ lang, onClose }: Props) {
               {t.lbTabLost}
             </button>
           </div>
+          <div className="lb-viewer__suits" role="tablist" aria-label={t.lbColSuits}>
+            {([2, 4] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={suitMode === s}
+                className={`lb-viewer__suit ${suitMode === s ? "is-active" : ""}`}
+                onClick={() => setSuitMode(s)}
+              >
+                {s === 2 ? t.twoSuits : t.fourSuits}
+              </button>
+            ))}
+          </div>
         </header>
 
         <div className={`lb-viewer__body ${isWon ? "lb-viewer__body--won" : ""}`}>
           {state.kind === "loading" && <p className="lb__empty">{t.lbLoading}</p>}
           {state.kind === "ok" && (
-            <LbTable entries={state.entries} highlightTs={-1} lang={lang} />
+            <>
+              <LbTable entries={state.entries} highlightTs={-1} lang={lang} />
+              <LbScopeNote scope={state.scope} lang={lang} />
+            </>
           )}
         </div>
 

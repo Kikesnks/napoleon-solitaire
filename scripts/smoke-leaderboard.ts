@@ -4,6 +4,7 @@
 
 import { createInitialState } from "../src/game/state";
 import { reduceAction, type Action } from "../src/game/rules";
+import { boardId } from "../src/game/leaderboard-types";
 import type { LoggedAction } from "../src/game/types";
 
 const BASE = process.env.SMOKE_BASE ?? "http://localhost:3001";
@@ -27,7 +28,9 @@ if (state.status !== "lost") {
 
 const payload = {
   name: NAME,
-  category: state.status,
+  // La tabla lleva desenlace Y dificultad: son cuatro y el servidor comprueba
+  // las dos mitades contra su propia simulación de la partida.
+  category: boardId(state.status, SUIT_MODE),
   score: state.score,
   suitMode: SUIT_MODE,
   seed: SEED,
