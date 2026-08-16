@@ -22,6 +22,12 @@
 // ⚠️ IMPORTANTE: mientras el solver no valide una semilla, **no se le promete
 // al jugador que el reto tenga solución**, ni aquí ni en ningún texto de la
 // interfaz. Un reparto imposible es posible.
+//
+// ⚠️ REGLA QUE NO SE ROMPE: **solo se añaden fechas de HOY EN ADELANTE.**
+// Cambiar la semilla de un día que ya pasó le cambia el reparto a quien ya lo
+// jugó: su resultado guardado dejaría de corresponder con la partida que ve, y
+// si algún día se pueden repetir retos pasados, el reparto no sería el mismo
+// que jugó. Un día publicado es un día congelado.
 
 /** Variantes: los dos modos de dificultad, como texto. */
 export type DailyVariant = "2" | "4";

@@ -1590,6 +1590,22 @@ button {
 .suit-select__daily-btn {
   flex: 1;
   max-width: 150px;
+  /* El borde también se anima: sin esto el amarillo del hover aparecía de
+     golpe, mientras que en las tarjetas de partida libre entra suave. */
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+/* Mismo gesto que las tarjetas de arriba: al pasar por encima, borde amarillo.
+   Sin esto los botones del reto parecían no ser pulsables. */
+.suit-select__daily-btn:hover,
+.suit-select__daily-btn:focus-visible {
+  border-color: var(--primary);
+  background: rgba(255, 209, 102, 0.1);
+  outline: none;
+}
+
+.suit-select__daily-btn:active {
+  transform: scale(0.97);
 }
 
 .suit-select__daily-streak {
