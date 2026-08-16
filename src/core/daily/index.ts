@@ -30,6 +30,25 @@ export interface DailyResult {
   ts: number;
 }
 
+/**
+ * La partida que produjo el mejor resultado guardado de un reto: semilla y
+ * registro de acciones, lo justo para **reproducirla**.
+ *
+ * Se guarda aparte de los resultados, en su propia clave, y por un motivo
+ * concreto: ocupa dos órdenes de magnitud más. Si el almacenamiento se llena,
+ * lo que se pierde es la prueba —un lujo para acreditar puntuaciones más
+ * adelante—, nunca el progreso que el jugador ve en el calendario.
+ *
+ * Las acciones son `unknown` a propósito: esta capa no sabe qué es una jugada
+ * en ningún solitario, solo las guarda y las devuelve tal cual.
+ */
+export interface DailyReplay {
+  date: string;
+  variant: string;
+  seed: number;
+  actions: readonly unknown[];
+}
+
 export interface DailyStreak {
   /** Días seguidos jugando. Ya cuenta rota si se saltó un día. */
   current: number;
@@ -49,6 +68,17 @@ export interface DailyOptions {
   storage?: DailyStorage;
   /** Cuántos días de resultados se conservan (por no crecer sin fin). */
   keepDays?: number;
+  /**
+   * Qué retos hay cada día, p. ej. `["2", "4"]`. Solo sirve para saber cuántos
+   * retos tiene el mes y poder decir "12 de 16". Si no se pasa, no se cuenta.
+   */
+  variants?: readonly string[];
+}
+
+/** Cuántos retos del mes en curso lleva hechos el jugador, de cuántos hay. */
+export interface DailyCollection {
+  done: number;
+  total: number;
 }
 
 export interface Daily {
@@ -69,10 +99,21 @@ export interface Daily {
   streak(now?: Date): DailyStreak;
   /** Marca el reto de hoy como jugado y devuelve la racha resultante. */
   markPlayed(date: string): DailyStreak;
-  /** Guarda el resultado del día. Se queda con el mejor de cada variante. */
-  recordResult(r: Omit<DailyResult, "ts">): void;
+  /**
+   * Guarda el resultado de un reto. Se queda con el mejor de cada variante.
+   *
+   * Si se le pasan `seed` y `actions`, guarda además la partida para poder
+   * reproducirla después. La partida guardada es **siempre la que produjo la
+   * puntuación guardada**: si el intento nuevo no mejora, no se toca ninguna
+   * de las dos cosas; si mejora, se cambian las dos a la vez.
+   */
+  recordResult(r: Omit<DailyResult, "ts"> & { seed?: number; actions?: readonly unknown[] }): void;
   /** Resultados guardados de una fecha (las dos variantes). */
   resultsOf(date: string): DailyResult[];
+  /** La partida que produjo el mejor resultado de un reto, si se guardó. */
+  replayOf(date: string, variant: string): DailyReplay | null;
+  /** Cuántos retos del mes en curso lleva hechos, de cuántos hay disponibles. */
+  collection(now?: Date): DailyCollection;
 }
 
 const DEFAULT_STORAGE: DailyStorage = { get: readPref, set: writePref };
@@ -130,8 +171,10 @@ export function createDaily(opts: DailyOptions): Daily {
   const storage = opts.storage ?? DEFAULT_STORAGE;
   const seeds = opts.seeds ?? {};
   const keepDays = opts.keepDays ?? 60;
+  const variants = opts.variants ?? [];
   const KEY_STREAK = `${opts.storagePrefix}.streak`;
   const KEY_RESULTS = `${opts.storagePrefix}.results`;
+  const KEY_REPLAYS = `${opts.storagePrefix}.replays`;
 
   type Stored = { current: number; best: number; last: string | null };
 
@@ -164,6 +207,26 @@ export function createDaily(opts: DailyOptions): Daily {
     return Array.isArray(all) ? all : [];
   }
 
+  function readReplays(): DailyReplay[] {
+    const all = parseJson<DailyReplay[]>(safeGet(KEY_REPLAYS), []);
+    return Array.isArray(all) ? all : [];
+  }
+
+  const sameChallenge = (a: { date: string; variant: string }, date: string, variant: string) =>
+    a.date === date && a.variant === variant;
+
+  /**
+   * Los días jugables: del 1 del mes en curso al día de hoy. Una sola fuente
+   * para el calendario, para el recuento de la colección y para `isPlayable`,
+   * porque si estas tres se calcularan por separado acabarían discrepando.
+   */
+  function playableRange(now: Date): string[] {
+    const mes = keyOf(now).slice(0, 8); // "AAAA-MM-"
+    const out: string[] = [];
+    for (let d = 1; d <= now.getDate(); d++) out.push(`${mes}${String(d).padStart(2, "0")}`);
+    return out;
+  }
+
   return {
     todayKey: (now = new Date()) => keyOf(now),
 
@@ -175,12 +238,7 @@ export function createDaily(opts: DailyOptions): Daily {
     // La regla vive en el motor a propósito: **el futuro no se abre nunca**, ni
     // por un error de la interfaz ni porque la tabla de semillas tenga días por
     // delante. Que una semilla exista no significa que su día se pueda jugar.
-    playableKeys(now = new Date()) {
-      const mes = keyOf(now).slice(0, 8); // "AAAA-MM-"
-      const out: string[] = [];
-      for (let d = 1; d <= now.getDate(); d++) out.push(`${mes}${String(d).padStart(2, "0")}`);
-      return out;
-    },
+    playableKeys: (now = new Date()) => playableRange(now),
 
     isPlayable(date, now = new Date()) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
@@ -220,21 +278,58 @@ export function createDaily(opts: DailyOptions): Daily {
     },
 
     recordResult(r) {
+      const { seed, actions, ...resultado } = r;
       const todos = readResults();
-      const previo = todos.find((x) => x.date === r.date && x.variant === r.variant);
+      const previo = todos.find((x) => sameChallenge(x, r.date, r.variant));
       // Se conserva el mejor intento del día, y ganar no se pierde nunca.
-      const mejor: DailyResult =
-        previo && previo.score >= r.score
-          ? { ...previo, won: previo.won || r.won }
-          : { ...r, won: (previo?.won ?? false) || r.won, ts: Date.now() };
+      let mejor: DailyResult;
+      let sustituye: boolean;
+      if (previo !== undefined && previo.score >= r.score) {
+        mejor = { ...previo, won: previo.won || r.won };
+        sustituye = false;
+      } else {
+        mejor = { ...resultado, won: (previo?.won ?? false) || r.won, ts: Date.now() };
+        sustituye = true;
+      }
 
-      const resto = todos.filter((x) => !(x.date === r.date && x.variant === r.variant));
+      const resto = todos.filter((x) => !sameChallenge(x, r.date, r.variant));
       const limite = [...resto, mejor]
         .sort((a, b) => (a.date < b.date ? 1 : -1))
         .slice(0, keepDays * 2);
       safeSet(KEY_RESULTS, JSON.stringify(limite));
+
+      // La partida guardada tiene que corresponder con la puntuación guardada.
+      // Si este intento no la mejora, no se toca nada. Si la mejora, se cambia
+      // la partida también — y si esta vez no vienen las acciones, la anterior
+      // se BORRA: una prueba que acredita otra puntuación es peor que ninguna.
+      if (!sustituye) return;
+      const otras = readReplays().filter((x) => !sameChallenge(x, r.date, r.variant));
+      const vigentes =
+        seed !== undefined && actions !== undefined
+          ? [...otras, { date: r.date, variant: r.variant, seed, actions }]
+          : otras;
+      // Solo se conservan las del mes en curso: son las únicas que sirven para
+      // la clasificación mensual, y son con diferencia lo más pesado que guarda
+      // el juego. Vaciar cada mes mantiene el gasto acotado.
+      const mes = r.date.slice(0, 8);
+      safeSet(KEY_REPLAYS, JSON.stringify(vigentes.filter((x) => x.date.slice(0, 8) === mes)));
     },
 
-    resultsOf: (date) => readResults().filter((r) => r.date === date)
+    resultsOf: (date) => readResults().filter((r) => r.date === date),
+
+    replayOf: (date, variant) =>
+      readReplays().find((x) => sameChallenge(x, date, variant)) ?? null,
+
+    collection(now = new Date()) {
+      const dias = new Set(playableRange(now));
+      // Un mismo reto se cuenta una sola vez, por si el almacenamiento trajera
+      // duplicados de una versión anterior.
+      const hechos = new Set(
+        readResults()
+          .filter((r) => dias.has(r.date) && variants.includes(r.variant))
+          .map((r) => `${r.date}|${r.variant}`)
+      );
+      return { done: hechos.size, total: dias.size * variants.length };
+    }
   };
 }

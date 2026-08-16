@@ -609,6 +609,13 @@ button {
   backdrop-filter: blur(4px);
   padding: 20px;
   z-index: 999;
+  /* En horizontal la ventana puede tener 340 px de alto y ningún panel cabe
+     ahí. Sin esto, los botones de abajo quedaban fuera de pantalla y no había
+     forma de llegar a ellos: el `overflow: hidden` de `body` impide desplazar
+     la página. Desplaza el overlay, no el panel, para que el panel conserve su
+     sombra y sus bordes redondeados. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .overlay__panel {
@@ -619,6 +626,12 @@ button {
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  /* `margin: auto` y no solo `align-items: center`: cuando el contenido es más
+     alto que el hueco, el centrado por flex recorta la parte de ARRIBA y deja
+     el título inalcanzable. Los márgenes automáticos centran cuando sobra sitio
+     y se quedan a cero cuando no sobra, que es justo lo que hace falta. */
+  margin: auto;
+  flex-shrink: 0;
 }
 
 .overlay__panel--win {
@@ -1593,6 +1606,131 @@ button {
   /* El borde también se anima: sin esto el amarillo del hover aparecía de
      golpe, mientras que en las tarjetas de partida libre entra suave. */
   transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+.suit-select__daily-replay {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.62;
+}
+
+/* ── Calendario de retos del mes ──────────────────────────────────────────
+   Siete columnas fijas y celdas que se encogen con el panel: a 320 px cada
+   una queda en ~34 px, que sigue siendo un objetivo táctil aceptable. Las
+   medidas van en `em` para que el bloque entero se adapte si cambia la
+   tipografía del panel. */
+.daily-cal {
+  margin: 10px 0 12px;
+}
+
+.daily-cal__weekdays,
+.daily-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.daily-cal__weekdays {
+  margin-bottom: 3px;
+}
+
+.daily-cal__weekday {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  opacity: 0.45;
+  letter-spacing: 0.04em;
+}
+
+.daily-cal__gap {
+  /* Hueco antes del día 1. No es un botón: no recibe foco ni lector. */
+  display: block;
+}
+
+.daily-cal__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 0 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--hud-fg);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+
+.daily-cal__day:hover,
+.daily-cal__day:focus-visible {
+  border-color: var(--primary);
+  background: rgba(255, 209, 102, 0.1);
+  outline: none;
+}
+
+.daily-cal__day:active {
+  transform: scale(0.94);
+}
+
+/* Hoy se distingue por el borde; el día elegido, por el relleno. Así se
+   pueden ver las dos cosas a la vez cuando coinciden. */
+.daily-cal__day--today {
+  border-color: rgba(255, 209, 102, 0.55);
+}
+
+.daily-cal__day--selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #1a1a1a;
+}
+
+.daily-cal__num {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.daily-cal__marks {
+  display: flex;
+  gap: 2px;
+  height: 5px;
+  align-items: center;
+}
+
+.daily-cal__mark {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  /* Sin jugar: hueco marcado, no invisible. El jugador tiene que ver que ahí
+     hay algo pendiente — es justo lo que le da algo que hacer hoy. */
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.daily-cal__mark--done {
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: none;
+}
+
+.daily-cal__mark--won {
+  background: #6bd08a;
+  box-shadow: none;
+}
+
+/* Sobre el relleno amarillo del día elegido, los puntos claros desaparecen. */
+.daily-cal__day--selected .daily-cal__mark {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.daily-cal__day--selected .daily-cal__mark--done {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.daily-cal__day--selected .daily-cal__mark--won {
+  background: #1f7a3d;
 }
 
 /* Mismo gesto que las tarjetas de arriba: al pasar por encima, borde amarillo.

@@ -1,6 +1,9 @@
+import { useState } from "react";
 import type { Lang } from "../i18n/strings";
 import { STRINGS } from "../i18n/strings";
 import type { SuitMode } from "../game";
+import type { DailyCollection, DailyResult } from "../game/daily";
+import { DailyCalendar } from "./DailyCalendar";
 import { SuitIcon } from "./SuitIcon";
 
 interface Props {
@@ -13,7 +16,13 @@ interface Props {
   dailyStreak: number;
   /** ¿Ya se ha jugado el reto de hoy? Solo informa; se puede repetir. */
   dailyPlayedToday: boolean;
-  onSelectDaily(mode: SuitMode): void;
+  /** Cuántos retos del mes lleva hechos, de cuántos hay. Se cuenta aparte de la racha. */
+  dailyCollection: DailyCollection;
+  /** Días jugables del mes. Vienen del motor: del 1 a hoy, nunca el futuro. */
+  dailyDays: readonly string[];
+  dailyResultsByDate: Readonly<Record<string, readonly DailyResult[]>>;
+  dailyTodayKey: string;
+  onSelectDaily(mode: SuitMode, date: string): void;
 }
 
 export function SuitSelectDialog({
@@ -23,9 +32,23 @@ export function SuitSelectDialog({
   onCancel,
   dailyStreak,
   dailyPlayedToday,
+  dailyCollection,
+  dailyDays,
+  dailyResultsByDate,
+  dailyTodayKey,
   onSelectDaily
 }: Props) {
   const t = STRINGS[lang];
+
+  /**
+   * Día elegido en el calendario. Arranca en hoy siempre: el reto de hoy es el
+   * que hace volver mañana, y tiene que seguir estando a un solo clic aunque el
+   * calendario esté delante.
+   */
+  const [selectedDay, setSelectedDay] = useState<string>(dailyTodayKey);
+  const dayResults = dailyResultsByDate[selectedDay] ?? [];
+  const alreadyPlayed =
+    selectedDay === dailyTodayKey ? dailyPlayedToday : dayResults.length > 0;
   return (
     <div
       className="overlay suit-select"
@@ -94,31 +117,61 @@ export function SuitSelectDialog({
           <h3 id="daily-title" className="suit-select__daily-title">
             🗓️ {t.dailyTitle}
           </h3>
-          <p className="suit-select__daily-hint">{t.dailyHint}</p>
+          <p className="suit-select__daily-hint">
+            {selectedDay === dailyTodayKey ? t.dailyHint : t.dailyPickDay}
+          </p>
+
+          <DailyCalendar
+            lang={lang}
+            days={dailyDays}
+            resultsByDate={dailyResultsByDate}
+            todayKey={dailyTodayKey}
+            selected={selectedDay}
+            onSelect={setSelectedDay}
+          />
+
           <div className="suit-select__daily-actions">
             <button
               type="button"
               className="hud__btn suit-select__daily-btn"
-              onClick={() => onSelectDaily(2)}
+              onClick={() => onSelectDaily(2, selectedDay)}
             >
               {t.twoSuits}
             </button>
             <button
               type="button"
               className="hud__btn suit-select__daily-btn"
-              onClick={() => onSelectDaily(4)}
+              onClick={() => onSelectDaily(4, selectedDay)}
             >
               {t.fourSuits}
             </button>
           </div>
+
+          {/*
+            Racha y colección, contadas por separado a propósito: quien se haga
+            treinta retos atrasados en una tarde verá "racha 1 día · 30 de 30".
+            La racha solo la consigue quien vuelve cada día, y es lo que empuja
+            a volver; la colección es lo que le da algo que hacer hoy.
+          */}
           <p className="suit-select__daily-streak">
             {dailyStreak > 0 && (
               <span>
                 🔥 {t.dailyStreak}: {dailyStreak} {dailyStreak === 1 ? t.day : t.days}
               </span>
             )}
-            {dailyPlayedToday && <span> · {t.dailyPlayedToday}</span>}
+            {dailyStreak > 0 && dailyCollection.total > 0 && <span> · </span>}
+            {dailyCollection.total > 0 && (
+              <span>
+                🗓️ {dailyCollection.done}/{dailyCollection.total} {t.dailyCollected}
+              </span>
+            )}
           </p>
+          {alreadyPlayed && (
+            <p className="suit-select__daily-replay">
+              {selectedDay === dailyTodayKey ? `${t.dailyPlayedToday} · ` : ""}
+              {t.dailyReplayHint}
+            </p>
+          )}
         </section>
 
         {canCancel && (

@@ -16,7 +16,7 @@ import { useTimer } from "./hooks/useTimer";
 import { useFirstRun, useLanguage } from "./i18n/useLanguage";
 import { STRINGS } from "./i18n/strings";
 import type { SuitMode, Status } from "./game";
-import { daily, isTodaysChallenge, todaysSeed, variantOf } from "./game/daily";
+import { challengeDateOf, daily, seedForDate, variantOf, type DailyResult } from "./game/daily";
 import { qualifies, submitScore, type LeaderboardCategory, type LeaderboardEntry } from "./game/leaderboard";
 
 /** Duración del reparto inicial: 9 pilas con stagger 80ms + 520ms keyframe ≈ 1.2s. */
@@ -88,7 +88,21 @@ export default function App() {
   // guardar ninguna marca extra ni tocar el estado del motor.
   const [dailyTick, setDailyTick] = useState(0);
   const dailyStreak = useMemo(() => daily.streak(), [dailyTick]);
-  const isDailyGame = isTodaysChallenge(state.seed, state.suitMode);
+  const dailyCollection = useMemo(() => daily.collection(), [dailyTick]);
+  const dailyTodayKey = useMemo(() => daily.todayKey(), [dailyTick]);
+  /** Los días jugables los decide el motor: del 1 del mes a hoy, nunca el futuro. */
+  const dailyDays = useMemo(() => daily.playableKeys(), [dailyTick]);
+  const dailyResultsByDate = useMemo(() => {
+    const out: Record<string, readonly DailyResult[]> = {};
+    for (const fecha of dailyDays) out[fecha] = daily.resultsOf(fecha);
+    return out;
+  }, [dailyDays, dailyTick]);
+
+  /**
+   * De qué día es el reto que se está jugando, o `null` si es partida libre.
+   * Se deduce de la semilla, sin marcas extra ni campos nuevos en el motor.
+   */
+  const dailyGameDate = challengeDateOf(state.seed, state.suitMode);
 
   // Detecta el fin de partida una sola vez por juego.
   const prevStatusRef = useRef<Status>("playing");
@@ -104,13 +118,20 @@ export default function App() {
     }
     if (prev !== "playing") return; // ya gestionado en esta partida
 
-    // Resultado del reto de hoy: se guarda en local, solo en este dispositivo.
-    if (isDailyGame) {
+    // Resultado del reto: se guarda en local, solo en este dispositivo.
+    //
+    // Va con la SEMILLA Y EL REGISTRO DE ACCIONES, no solo con la puntuación.
+    // El servidor acredita reproduciendo la partida, así que sin esto el día
+    // que exista la clasificación mensual no podría acreditar nada de lo jugado
+    // antes y la tabla nacería vacía. Guardarlo ahora es barato; después, no.
+    if (dailyGameDate !== null) {
       daily.recordResult({
-        date: daily.todayKey(),
+        date: dailyGameDate,
         variant: variantOf(state.suitMode),
         score: state.score,
-        won: cur === "won"
+        won: cur === "won",
+        seed: state.seed,
+        actions: state.actionLog
       });
       setDailyTick((n) => n + 1);
     }
@@ -266,15 +287,26 @@ export default function App() {
   };
 
   /**
-   * Empieza el reto de hoy. Misma dificultad elegida, pero con la semilla del
-   * día: el mismo reparto para todo el mundo. Se marca como jugado al empezar,
-   * no al ganar — el Napoleón es difícil y una racha que solo cuente victorias
-   * sería un cero permanente, justo lo contrario de lo que hace volver mañana.
+   * Empieza el reto de un día. Misma dificultad elegida, pero con la semilla de
+   * ese día: el mismo reparto para todo el mundo. Se marca como jugado al
+   * empezar, no al ganar — el Napoleón es difícil y una racha que solo contara
+   * victorias sería un cero permanente, justo lo contrario de lo que hace
+   * volver mañana.
+   *
+   * La racha se marca **en el día de hoy**, sea cual sea el reto elegido: mide
+   * que el jugador ha venido hoy, no qué reparto ha jugado. Por eso quien se
+   * hace treinta retos atrasados en una tarde tiene racha de 1 día y treinta
+   * retos en la colección: son dos cosas distintas y se cuentan por separado.
+   *
+   * Repetir un reto ya jugado está permitido: mismo reparto, se conserva la
+   * mejor puntuación y la racha no se toca (ya estaba marcada).
    */
-  const handleDailySelect = (mode: SuitMode) => {
+  const handleDailySelect = (mode: SuitMode, date: string) => {
+    // Cinturón: la interfaz solo ofrece días jugables, pero el motor manda.
+    if (!daily.isPlayable(date)) return;
     setPendingSuitSource(null);
     writePref(SUIT_MODE_KEY, String(mode));
-    engine.newGame(todaysSeed(mode), mode);
+    engine.newGame(seedForDate(date, mode), mode);
     daily.markPlayed(daily.todayKey());
     setDailyTick((n) => n + 1);
   };
@@ -315,8 +347,10 @@ export default function App() {
         score={state.score}
         elapsedMs={elapsedMs}
         onPlayAgain={() => setPendingSuitSource("gameover")}
-        wasDaily={isDailyGame}
+        dailyDate={dailyGameDate}
+        todayKey={dailyTodayKey}
         dailyStreak={dailyStreak.current}
+        dailyCollection={dailyCollection}
       />
       {showRules && (
         <Instructions
@@ -335,6 +369,10 @@ export default function App() {
           onCancel={handleSuitCancel}
           dailyStreak={dailyStreak.current}
           dailyPlayedToday={dailyStreak.playedToday}
+          dailyCollection={dailyCollection}
+          dailyDays={dailyDays}
+          dailyResultsByDate={dailyResultsByDate}
+          dailyTodayKey={dailyTodayKey}
           onSelectDaily={handleDailySelect}
         />
       )}

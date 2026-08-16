@@ -70,6 +70,17 @@ export interface UIStrings {
   dailyPlayedToday: string;
   day: string;
   days: string;
+  /** Calendario de retos del mes en curso. */
+  dailyMonthTitle: string;
+  dailyToday: string;
+  dailyCollected: string;
+  dailyPickDay: string;
+  dailyDayLabel: string;
+  dailyDayDone: string;
+  dailyDayWon: string;
+  dailyDayPending: string;
+  dailyReplayHint: string;
+  weekdayInitials: readonly [string, string, string, string, string, string, string];
   // Liga de Campeones
   leaderboard: string;
   lbTabWon: string;
@@ -130,6 +141,16 @@ export const STRINGS: Record<Lang, UIStrings> = {
     dailyPlayedToday: "Ya jugado hoy",
     day: "día",
     days: "días",
+    dailyMonthTitle: "Retos de este mes",
+    dailyToday: "hoy",
+    dailyCollected: "retos",
+    dailyPickDay: "Elige un día y luego la dificultad",
+    dailyDayLabel: "Día",
+    dailyDayDone: "jugado",
+    dailyDayWon: "ganado",
+    dailyDayPending: "sin jugar",
+    dailyReplayHint: "Puedes repetirlo: el mismo reparto y se guarda tu mejor puntuación",
+    weekdayInitials: ["L", "M", "X", "J", "V", "S", "D"],
     twoSuitsDesc: "Un palo rojo y uno negro (más fácil)",
     fourSuitsDesc: "Los cuatro palos — versión original",
     cancel: "Cancelar",
@@ -192,6 +213,16 @@ export const STRINGS: Record<Lang, UIStrings> = {
     dailyPlayedToday: "Already played today",
     day: "day",
     days: "days",
+    dailyMonthTitle: "This month's challenges",
+    dailyToday: "today",
+    dailyCollected: "challenges",
+    dailyPickDay: "Pick a day, then the difficulty",
+    dailyDayLabel: "Day",
+    dailyDayDone: "played",
+    dailyDayWon: "won",
+    dailyDayPending: "not played",
+    dailyReplayHint: "You can replay it: same deal, and your best score is kept",
+    weekdayInitials: ["M", "T", "W", "T", "F", "S", "S"],
     twoSuitsDesc: "One red suit and one black (easier)",
     fourSuitsDesc: "All four suits — original version",
     cancel: "Cancel",
@@ -252,6 +283,16 @@ export const STRINGS: Record<Lang, UIStrings> = {
     dailyPlayedToday: "Déjà joué aujourd'hui",
     day: "jour",
     days: "jours",
+    dailyMonthTitle: "Défis de ce mois",
+    dailyToday: "aujourd'hui",
+    dailyCollected: "défis",
+    dailyPickDay: "Choisis un jour, puis la difficulté",
+    dailyDayLabel: "Jour",
+    dailyDayDone: "joué",
+    dailyDayWon: "gagné",
+    dailyDayPending: "pas joué",
+    dailyReplayHint: "Tu peux le rejouer : même donne, ton meilleur score est conservé",
+    weekdayInitials: ["L", "M", "M", "J", "V", "S", "D"],
     twoSuitsDesc: "Une couleur rouge et une noire (plus facile)",
     fourSuitsDesc: "Les quatre couleurs — version originale",
     cancel: "Annuler",

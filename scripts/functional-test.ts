@@ -417,6 +417,79 @@ async function main(): Promise<void> {
     } else {
       fail(`la racha no se muestra: "${textoRacha.trim()}"`);
     }
+
+    // ---------- 9. Calendario de retos del mes (B6) ----------
+    // Lo que se comprueba aquí es justo lo que un test puro no ve: que la
+    // interfaz ofrece exactamente los días que el motor considera jugables, y
+    // que al elegir un día pasado se juega ESE reparto y no otro.
+    const diasJugables = daily.playableKeys();
+    const hoyClave = daily.todayKey();
+
+    const celdas = await page.$$(".daily-cal__day");
+    if (celdas.length === diasJugables.length) {
+      ok(`B6.1 el calendario ofrece ${celdas.length} días (del 1 a hoy)`);
+    } else {
+      fail(`el calendario ofrece ${celdas.length} días y el motor dice ${diasJugables.length}`);
+    }
+
+    // La comprobación que de verdad importa: NINGÚN día futuro, mirando los
+    // números pintados y no la cuenta. Una celda de más se vería aquí.
+    const numeros = await page.$$eval(".daily-cal__day .daily-cal__num", (ns) =>
+      ns.map((n) => Number(n.textContent))
+    );
+    const diaDeHoy = Number(hoyClave.slice(8, 10));
+    const futuros = numeros.filter((n) => n > diaDeHoy || n < 1);
+    if (futuros.length === 0 && numeros.length > 0) {
+      ok(`B6.2 ningún día futuro en el calendario (máximo el ${diaDeHoy})`);
+    } else {
+      fail(`el calendario ofrece días imposibles: ${futuros.join(", ")}`);
+    }
+
+    const conteoColeccion = /(\d+)\s*\/\s*(\d+)/.exec(textoRacha);
+    if (conteoColeccion && Number(conteoColeccion[2]) === diasJugables.length * 2) {
+      ok(`B6.3 la colección se muestra aparte de la racha: "${conteoColeccion[0]}"`);
+    } else {
+      fail(`la colección no se muestra o no cuadra: "${textoRacha.trim()}"`);
+    }
+
+    // Un día pasado: se elige en el calendario y luego la dificultad. Si el mes
+    // acaba de empezar y hoy es día 1, no hay pasado que probar.
+    if (diasJugables.length > 1) {
+      const fechaPasada = diasJugables[0];
+      await celdas[0].click();
+      await page.waitForTimeout(100);
+      const botonesDia = await page.$$(".suit-select__daily-btn");
+      await botonesDia[0].click(); // 2 palos
+      await page.waitForTimeout(200);
+
+      const trasPasado = await page.evaluate(() => ({
+        partida: window.localStorage.getItem("solnap.game"),
+        racha: window.localStorage.getItem("solnap.daily.streak")
+      }));
+      const esperadaPasada = daily.seedFor(fechaPasada, "2");
+      const seedPasada = trasPasado.partida
+        ? (JSON.parse(trasPasado.partida) as { seed: number }).seed
+        : null;
+      if (seedPasada === esperadaPasada) {
+        ok(`B6.4 el reto del ${fechaPasada} arranca con su propio reparto`);
+      } else {
+        fail(`el reto pasado arrancó con la semilla ${seedPasada}, esperaba ${esperadaPasada}`);
+      }
+
+      // El punto fino del "método Duolingo": jugar un reto atrasado cuenta como
+      // haber venido HOY. Si la racha se marcara en la fecha del reto, quien se
+      // hiciera el mes entero de una sentada se fabricaría una racha de 30 días.
+      const rachaPasada = trasPasado.racha
+        ? (JSON.parse(trasPasado.racha) as { current: number; last: string })
+        : null;
+      if (rachaPasada && rachaPasada.last === hoyClave && rachaPasada.current === 1) {
+        ok("B6.5 jugar un reto atrasado marca la racha en HOY, y sigue siendo de 1 día");
+      } else {
+        fail(`la racha se marcó mal tras un reto atrasado: ${trasPasado.racha}`);
+      }
+    } else {
+      ok("B6.4-B6.5 sin días pasados que probar (hoy es día 1 del mes)");
+    }
   } finally {
     await browser.close();
     stopPreview(server);

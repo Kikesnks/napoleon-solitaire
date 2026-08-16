@@ -73,6 +73,8 @@ Al no depender de React ni del DOM, cualquier framework de tests puede importar 
 
 Dos retos cada día —uno de 2 palos y otro de 4—, iguales para todo el mundo, con racha de días jugados y el mejor resultado de cada día guardado en el dispositivo. Las semillas las valida un solver antes de publicarlas: **de cada día publicado existe una partida ganada comprobada**.
 
+Un calendario del mes en curso deja jugar también **los días ya pasados**, del 1 a hoy. El futuro no se abre nunca. La racha y la colección se cuentan por separado: la racha mide los días que el jugador ha venido, la colección cuántos retos del mes lleva.
+
 ### Ranking global
 
 Tabla separada para partidas ganadas y para partidas terminadas sin ganar, persistida en Supabase a través de funciones serverless. Si el backend no responde —o no existe, como en un build embebido— cae al ranking local **sin mostrar ningún error técnico al jugador**.
@@ -164,6 +166,8 @@ Cuatro detalles que no son obvios:
 - **El día anterior se calcula construyendo la fecha a mediodía.** Restar 24 horas se tuerce en los cambios de hora, y una racha no puede romperse porque el país haya adelantado el reloj.
 - **Que la partida en curso sea el reto de hoy se deduce de la semilla**, sin guardar ninguna marca ni añadir un campo al estado del motor.
 - **Qué días se pueden jugar lo decide el motor, no la interfaz.** `playableKeys(hoy)` va del día 1 del mes a hoy, y de ahí sale la lista del calendario: **el futuro no se abre nunca**, ni por un descuido de una pantalla ni porque la tabla de semillas tenga días por delante. Que exista la semilla del día 25 no abre el día 25 cuando estamos a 16.
+- **La racha se marca en el día de hoy, sea cual sea el reto jugado.** Mide que el jugador ha venido hoy, no qué reparto ha hecho. Por eso quien se hace treinta retos atrasados en una tarde tiene racha de 1 día y treinta retos en la colección: son dos cosas distintas y tiran del jugador de dos maneras distintas.
+- **El registro de acciones de cada reto se guarda aparte de los resultados.** Los resultados son diminutos; las partidas ocupan dos órdenes de magnitud más. Separados, un almacenamiento lleno se lleva la prueba —que sirve para acreditar puntuaciones cuando exista la clasificación mensual— y nunca el progreso que el jugador ve. Y la partida guardada es **siempre la que produjo la puntuación guardada**: si mejora la puntuación sin traer las acciones, la prueba anterior se borra en vez de acreditar algo que no ocurrió.
 
 La racha cuenta **días jugados**, no victorias: en un solitario de dos barajas, una racha que solo contara victorias sería un cero permanente.
 

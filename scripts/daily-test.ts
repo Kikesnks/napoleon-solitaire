@@ -227,6 +227,115 @@ check("y la puntuación buena tampoco", ganada?.score === 300);
 check("los días se guardan por separado", res.resultsOf("2026-08-15").length === 0);
 
 // ============================================================
+section("B6 · la colección del mes se cuenta aparte de la racha");
+
+const col = createDaily({
+  storagePrefix: "test.daily",
+  storage: memoria(),
+  variants: ["2", "4"]
+});
+const hoy16 = dia("2026-08-16");
+
+check("a 16 de agosto hay 32 retos disponibles", col.collection(hoy16).total === 32);
+check("y ninguno hecho", col.collection(hoy16).done === 0);
+
+col.recordResult({ date: "2026-08-16", variant: "2", score: 100, won: false });
+check("un reto hecho cuenta 1", col.collection(hoy16).done === 1);
+
+col.recordResult({ date: "2026-08-16", variant: "4", score: 100, won: false });
+check("las dos dificultades del mismo día cuentan 2", col.collection(hoy16).done === 2);
+
+col.recordResult({ date: "2026-08-16", variant: "2", score: 500, won: true });
+check("repetir un reto no lo cuenta dos veces", col.collection(hoy16).done === 2);
+
+// Este es el caso que describió el propietario: alguien entra el día 16 y se
+// hace el mes entero de una sentada. Colección llena, racha de 1 día.
+for (let d = 1; d <= 15; d++) {
+  const fecha = `2026-08-${String(d).padStart(2, "0")}`;
+  col.recordResult({ date: fecha, variant: "2", score: 200, won: false });
+  col.recordResult({ date: fecha, variant: "4", score: 200, won: false });
+}
+col.markPlayed("2026-08-16");
+check("el mes entero de una sentada: 32 de 32", col.collection(hoy16).done === 32);
+check("...pero la racha sigue siendo de 1 día", col.streak(hoy16).current === 1);
+
+check(
+  "un reto de un día futuro no cuenta en la colección",
+  (() => {
+    col.recordResult({ date: "2026-08-25", variant: "2", score: 999, won: true });
+    return col.collection(hoy16).done === 32;
+  })()
+);
+check(
+  "ni uno del mes pasado",
+  (() => {
+    col.recordResult({ date: "2026-07-30", variant: "2", score: 999, won: true });
+    return col.collection(hoy16).done === 32;
+  })()
+);
+check(
+  "sin declarar variantes no se cuenta nada",
+  createDaily({ storagePrefix: "test.daily", storage: memoria() }).collection(hoy16).total === 0
+);
+
+// ============================================================
+section("B6 · el registro de acciones se guarda para poder acreditarlo");
+
+const rep = createDaily({ storagePrefix: "test.daily", storage: memoria(), variants: ["2", "4"] });
+const jugada1 = [{ type: "deal" }, { type: "move", from: "P1", to: "F1" }];
+const jugada2 = [{ type: "deal" }, { type: "deal" }, { type: "move", from: "P2", to: "F2" }];
+
+rep.recordResult({ date: "2026-08-10", variant: "2", score: 100, won: false, seed: 42, actions: jugada1 });
+const g1 = rep.replayOf("2026-08-10", "2");
+check("se guarda la partida completa", g1?.actions.length === 2 && g1?.seed === 42);
+check("con su fecha y su dificultad", g1?.date === "2026-08-10" && g1?.variant === "2");
+
+rep.recordResult({ date: "2026-08-10", variant: "2", score: 50, won: false, seed: 42, actions: jugada2 });
+check(
+  "un intento peor NO sustituye la partida guardada",
+  rep.replayOf("2026-08-10", "2")?.actions.length === 2
+);
+
+rep.recordResult({ date: "2026-08-10", variant: "2", score: 300, won: true, seed: 42, actions: jugada2 });
+const g2 = rep.replayOf("2026-08-10", "2");
+check("un intento mejor sí la sustituye", g2?.actions.length === 3);
+check(
+  "y la partida guardada es la que produjo la puntuación guardada",
+  rep.resultsOf("2026-08-10").find((r) => r.variant === "2")?.score === 300
+);
+
+// El caso peligroso: se mejora la puntuación pero no llegan las acciones. Si
+// se dejara la partida anterior, acreditaría 300 puntos con una partida de 100.
+rep.recordResult({ date: "2026-08-10", variant: "2", score: 900, won: true });
+check(
+  "si mejora sin acciones, la prueba vieja se BORRA en vez de mentir",
+  rep.replayOf("2026-08-10", "2") === null
+);
+
+check("un reto sin partida guardada devuelve null", rep.replayOf("2026-08-11", "4") === null);
+check(
+  "las dificultades no se pisan entre sí",
+  (() => {
+    rep.recordResult({ date: "2026-08-12", variant: "2", score: 10, won: false, seed: 1, actions: jugada1 });
+    rep.recordResult({ date: "2026-08-12", variant: "4", score: 10, won: false, seed: 2, actions: jugada2 });
+    return rep.replayOf("2026-08-12", "2")?.seed === 1 && rep.replayOf("2026-08-12", "4")?.seed === 2;
+  })()
+);
+
+section("las partidas guardadas no crecen sin fin");
+check(
+  "al cambiar de mes se sueltan las del mes anterior",
+  (() => {
+    rep.recordResult({ date: "2026-09-01", variant: "2", score: 10, won: false, seed: 7, actions: jugada1 });
+    return rep.replayOf("2026-09-01", "2")?.seed === 7 && rep.replayOf("2026-08-12", "2") === null;
+  })()
+);
+check(
+  "pero los resultados del mes anterior se conservan",
+  rep.resultsOf("2026-08-12").length === 2
+);
+
+// ============================================================
 section("B3.4 · sin almacenamiento el juego sigue funcionando");
 
 const sinDisco = createDaily({ storagePrefix: "test.daily", storage: roto });
