@@ -6,7 +6,7 @@ Jugable en **[n-solitaire.vercel.app](https://n-solitaire.vercel.app)**
 
 ## Qué es
 
-Versión jugable en navegador del solitario clásico de dos barajas, siguiendo el reglamento del PDF de referencia (`Esquema_solitario_Napoleon.pdf`). React + TypeScript + Vite, con toda la lógica del juego escrita en TypeScript puro: sin React, sin DOM y sin efectos.
+Versión jugable en navegador del solitario clásico de dos barajas, siguiendo el reglamento del PDF de referencia ([`docs/esquemas/esquema_solitario_napoleon.pdf`](./docs/esquemas/esquema_solitario_napoleon.pdf)). React + TypeScript + Vite, con toda la lógica del juego escrita en TypeScript puro: sin React, sin DOM y sin efectos.
 
 El interés técnico del proyecto está en tres decisiones que atraviesan todo el código:
 
@@ -113,7 +113,16 @@ src/
 
 api/                       ← Funciones serverless: leaderboard/ y keepalive.
 scripts/                   ← Tests, capturas y empaquetado.
+
+docs/                      ← Toda la documentación. La raíz solo lleva README y RULES.
+  esquemas/                ← Reglamento gráfico original (PDF / ODP). Versionado.
+  tecnica/                 ← Documentación técnica reutilizable. Versionada.
+  vivos/                   ← Planes de trabajo en curso.      ⟶ fuera del repo
+  informes/                ← Investigación y estrategia.      ⟶ fuera del repo
+  notas/                   ← Notas de trabajo del autor.      ⟶ fuera del repo
 ```
+
+Las tres últimas carpetas quedan fuera del repositorio por `.gitignore` **a nivel de carpeta**, no por nombre de archivo: así el filtro no se rompe si alguien renombra un documento.
 
 ### La fachada del ranking
 
@@ -249,4 +258,4 @@ Para el reglamento completo y comentado, ver [`RULES.md`](./RULES.md).
 npm run docs:pdf
 ```
 
-Toma el contenido de `Esquema_solitario_Napoleon.original.pdf` y produce el PDF con un anexo que recoge las reglas adicionales: visualización horizontal de B/B1/D/D1 y stacking ascendente en free cells.
+Toma el contenido de [`docs/esquemas/esquema_solitario_napoleon.original.pdf`](./docs/esquemas/esquema_solitario_napoleon.original.pdf) y produce el PDF con un anexo que recoge las reglas adicionales: visualización horizontal de B/B1/D/D1 y stacking ascendente en free cells.

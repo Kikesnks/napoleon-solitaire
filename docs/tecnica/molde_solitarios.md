@@ -1,0 +1,268 @@
+# Molde para solitarios
+
+> **Qué es esto.** La receta de lo que hay que montar en cada solitario nuevo: qué se reutiliza tal cual, qué se escribe desde cero, en qué orden y con qué trampas conocidas.
+> **Para quién.** Lo usa principalmente Claude al arrancar un juego nuevo, pero está escrito para que el propietario lo lea y lo entienda sin ser programador.
+> **De dónde sale.** De construir el Solitario Napoleón. Todo lo que hay aquí está probado en un juego real, no es teoría.
+> Creado: 16 de agosto de 2026 · Sustituye a la idea de una carpeta `MOLDE/` con código copiado (decisión D6).
+
+---
+
+## 1. Por qué un documento y no una carpeta con código
+
+La tentación es copiar una carpeta con la estructura hecha. No se hace, por tres razones:
+
+1. **Una copia que nadie ejecuta nace muerta.** En cuanto se toca el original, la copia se queda atrás y acabas con dos versiones del mismo ranking sin saber cuál vale.
+2. **Estorba**: entra en la comprobación de tipos, en el empaquetado y en las búsquedas, sin aportar nada.
+3. **Una pieza común extraída sin un segundo juego real se diseña a ciegas.** Es el segundo solitario el que dice qué era común de verdad y qué era del Napoleón disfrazado.
+
+**El plan es este:** este documento guía el juego nº 2. Cuando el nº 2 esté funcionando, lo que haya sobrevivido igual en los dos se extrae a un paquete común de verdad, ya probado por partida doble.
+
+---
+
+## 2. La regla de oro
+
+> **Antes de escribir cualquier módulo, la pregunta obligatoria: ¿esto valdrá igual para el siguiente solitario?**
+>
+> - **Sí** → va en la **base común**, sin una sola referencia al juego concreto: ni a sus reglas, ni a sus posiciones, ni a sus textos.
+> - **No** → va en el **código del juego**.
+> - **"Casi"** → va en la base común **parametrizado**. Nunca duplicado, y nunca con un `if (napoleon)` dentro.
+
+Y la dependencia va **siempre en un solo sentido**:
+
+```
+game/  ──usa──►  core/  ◄──usa──  platform/
+   ▲                                  │
+   └──────────  nunca al revés  ◄─────┘
+```
+
+`core/` y `platform/` **no saben que existe el Napoleón**. Si algún día uno de ellos necesita importar algo de `game/`, es que la pieza estaba mal cortada.
+
+---
+
+## 3. Inventario: qué se hereda y qué se escribe
+
+| 🧱 Base común — se hereda | 🃏 Del juego concreto — se escribe |
+|---|---|
+| Capa de plataforma y adaptadores de portales | Reglas del juego (`rules.ts`) |
+| Ranking con validación en servidor y respaldo local | Disposición del tablero |
+| Almacenamiento de preferencias y partida | Sistema de puntuación |
+| Motor de idiomas y detección automática | Textos de las reglas |
+| Consentimiento y política de privacidad | Modos de dificultad |
+| Anuncios y capa de recompensas | Arte, icono y nombre |
+| Compras (quitar anuncios, cosméticos) | Ficha de tienda |
+| Reto diario por semilla del día | |
+| Estadísticas y rachas | |
+| Analítica y eventos | |
+| Motor de pistas *(parametrizado por reglas)* | |
+| Infraestructura Supabase + Vercel | |
+| Arnés de tests completo | |
+| Empaquetado Capacitor y para portales | |
+
+**La columna de la izquierda es mucho más larga que la de la derecha.** Ese es exactamente el motivo de todo esto: el segundo solitario debería ser *reglas nuevas + tablero nuevo* y poco más.
+
+---
+
+## 4. Estructura estándar de carpetas
+
+Vale para cualquier solitario del catálogo. **En la raíz solo lo que las herramientas exigen que esté ahí.**
+
+```
+<proyecto>/
+  README.md                  ← Documentación técnica del proyecto.
+  RULES.md                   ← Reglamento consolidado del juego.
+  index.html · package.json · tsconfig*.json · vite.config.ts · vercel.json
+
+  src/
+    platform/                ← DÓNDE corre el juego. Base común.
+      types.ts               ← Interfaz Platform + capacidades.
+      detect.ts              ← Detección en tiempo de ejecución.
+      adapters/              ← web · crazygames · gamedistribution · y8 · capacitor
+    core/                    ← QUÉ sabe hacer el juego por debajo. Base común.
+      leaderboard/           ← types · remote · local · fachada con respaldo.
+      storage/               ← Preferencias que no revientan sin localStorage.
+      i18n/                  ← Motor de idiomas (los textos del juego van aparte).
+      rewards/ daily/ analytics/ consent/ solver/
+    game/                    ← EL JUEGO CONCRETO. Lo único que se reescribe entero.
+      types · deck · state · rules · save · leaderboard (atadura)
+    hooks/ components/ styles/
+
+  api/                       ← Funciones serverless: ranking y keepalive.
+  scripts/                   ← Tests, capturas, empaquetado.
+  public/                    ← favicon, iconos, privacidad.html.
+
+  docs/
+    esquemas/                ← Reglamento gráfico original.   versionado
+    tecnica/                 ← Este documento y similares.    versionado
+    vivos/                   ← Planes de trabajo en curso.    fuera del repo
+    informes/                ← Investigación y estrategia.    fuera del repo
+    notas/                   ← Notas de trabajo del autor.    fuera del repo
+```
+
+### Convención de nombres de archivo
+
+**Minúsculas, sin acentos y sin espacios; separador `_`.** Los acentos y los espacios en rutas dan guerra en scripts, en URLs y en herramientas de línea de comandos, y obligan a comillas por todas partes. Excepciones aceptadas: `README.md` y `RULES.md`, que son convención universal de repositorio.
+
+### Regla al mover cualquier archivo
+
+**Mover obliga a actualizar todas sus referencias, en la misma pasada**: enlaces entre documentos, enlaces de los documentos al código, rutas dentro de scripts, `README.md` y patrones del `.gitignore`. La mudanza no está terminada hasta que no queda un enlace roto y las pruebas están en verde.
+
+> Truco que ahorra disgustos: ignorar la documentación **por carpeta** (`docs/vivos/`) y no por nombre de archivo. Así renombrar un documento no lo mete de golpe en el repositorio sin querer.
+
+---
+
+## 5. Las piezas comunes, una a una
+
+Estado a 16/08/2026: ✅ existe y está probado en el Napoleón · ⏳ diseñado pero aún no escrito.
+
+### ✅ `core/leaderboard/` — ranking a prueba de fallos
+
+Cuatro archivos: `types.ts` (el contrato), `remote.ts` (servidor HTTP), `local.ts` (`localStorage`) y `index.ts` (la fachada).
+
+**Lo importante: la fachada nunca lanza una excepción.** Si el servidor no responde, cae al ranking local y el jugador no ve nunca un mensaje técnico. En un portal, donde `/api/...` sencillamente no existe, esto es la diferencia entre un juego que funciona y uno que enseña "Failed to fetch" en pantalla.
+
+El juego concreto aporta **su atadura** (`game/leaderboard.ts`): sus tipos y de dónde salen los datos. La fachada no sabe qué es una puntuación de Napoleón.
+
+### ✅ `core/storage/prefs.ts` — almacenamiento que no revienta
+
+Acceder a `localStorage` **puede lanzar** (modo privado estricto, permisos denegados). Todo acceso va envuelto. Consecuencia conocida y aceptada: en modo privado el juego no puede saber si es tu primera visita, así que no enseña las reglas de entrada. Se juega igual.
+
+### ⏳ `platform/` — la capa de adaptadores
+
+Una interfaz, un adaptador por destino, detección al arrancar. El juego pregunta por **capacidades** ("¿hay anuncio recompensado?"), nunca por identidad ("¿estoy en CrazyGames?"). Así, añadir un portal es escribir un archivo y no revisar la interfaz entera.
+
+```ts
+interface Platform {
+  readonly id: "web" | "crazygames" | "gamedistribution" | "y8" | "capacitor";
+  init(): Promise<void>;
+  gameplayStart(): void;             // los portales lo exigen para medir y colocar anuncios
+  gameplayStop(): void;
+  ads: { interstitial(): Promise<void>; rewarded(): Promise<"granted" | "dismissed" | "unavailable"> };
+  leaderboard: { list(cat): Promise<Entry[]>; submit(payload): Promise<Entry[]> };
+  storage: { get(key): Promise<string | null>; set(key, value): Promise<void> };
+  analytics: { track(event, props?): void };
+  capabilities: {
+    rewardedAds: boolean; interstitialAds: boolean;
+    externalApi: boolean;              // ¿podemos llamar a nuestro backend?
+    purchases: boolean; globalLeaderboard: boolean;
+  };
+}
+```
+
+### ✅ `i18n/` — idiomas
+
+Motor + diccionario. **El inglés es el idioma por defecto para todo lo que no sea el idioma nativo del autor**: los portales sirven público mundial, y mandar a un japonés a la versión española es perderlo. La preferencia elegida por el jugador manda siempre sobre la detección automática.
+
+**Los textos de la base común van en su propio diccionario**, separados de los textos del juego. Si no, el siguiente solitario hereda las reglas del anterior.
+
+### ⏳ `core/rewards/`, `core/daily/`, `core/solver/`, `core/analytics/`, `core/consent/`
+
+Diseñados, no escritos. Reglas para cuando toque:
+- **rewards**: interfaz "dame una recompensa" que en web es gratis y en la app llama al SDK de anuncios. El juego nunca habla con un SDK directamente.
+- **daily**: reto por semilla del día + tabla de semillas validadas como **archivo de datos**, separado del código.
+- **solver**: se ejecuta **fuera del navegador**, en un script. Alimenta el reto diario y las pistas.
+- **analytics**: eventos neutros que cada adaptador envía a donde toque. **Nunca un tracker propio en un build de portal**: sería una petición a un tercero desde el dominio del portal.
+- **consent**: obligatorio en la UE en cuanto haya publicidad.
+
+---
+
+## 6. Lo que se reescribe entero: `game/`
+
+TypeScript puro: **sin React, sin DOM y sin efectos**. Determinista a partir de una semilla. Esta disciplina no es estética, es lo que permite gratis:
+
+- **validar partidas en el servidor** re-simulándolas (anti-trampas),
+- **reto diario** con la semilla del día,
+- **solver y pistas**,
+- **tests del motor** sin levantar un navegador.
+
+Archivos: `types.ts` · `deck.ts` (barajado con PRNG sembrado) · `state.ts` · `rules.ts` · `save.ts` · `leaderboard.ts` (la atadura).
+
+---
+
+## 7. Infraestructura
+
+| Pieza | Qué se hereda |
+|---|---|
+| **Vercel** | Despliegue del `dist/`. Ojo: despliega `dist`, **no** `dist-portal` |
+| **Supabase** | Tabla del ranking + `api/leaderboard/{list,submit}` |
+| **Anti-trampas** | El servidor re-simula la partida con la semilla y el registro de acciones antes de aceptar una puntuación |
+| **Keepalive** | `api/keepalive` + cron diario en `vercel.json`. Sin esto, el plan gratuito de Supabase **pausa el proyecto por inactividad** y el ranking deja de funcionar |
+| **Imports ESM** | En las funciones serverless, los imports relativos **necesitan la extensión `.js`** o fallan solo en producción |
+
+---
+
+## 8. Builds por destino
+
+| Destino | Cómo | Detalles que importan |
+|---|---|---|
+| Web propia | `npm run build` | Va a Vercel |
+| Portal | `npm run build:portal` → `dist-portal/` | `--mode portal`, **sin sourcemap** (ahorra ~500 KB), `VITE_TARGET=portal` desactiva el ranking remoto |
+| Paquete | `npm run pack:portal` | Comprueba límites (≤ 20 MB, ≤ 1500 archivos), que no haya sourcemaps, que `index.html` esté en la raíz del zip y que **no quede ningún marcador sin rellenar** |
+
+**`base: "./"` en Vite es obligatorio**: los portales sirven el juego desde una subcarpeta y con rutas absolutas no carga nada.
+
+### Convención de marcadores
+
+Los datos que aún no existen se escriben como marcador literal **entre corchetes y en mayúsculas**: `[EMAIL@CONTACTO.COM]`. Se localizan de un vistazo y se rellenan todos de una pasada. **El empaquetado falla si detecta uno**, porque archivos como `privacidad.html` viajan dentro del zip que se sube al portal.
+
+---
+
+## 9. Arnés de tests
+
+| Comando | Qué cubre |
+|---|---|
+| `npm run typecheck` | Tipos |
+| `npm run test:smoke` | Motor de reglas, sin navegador |
+| `npm run test:leaderboard` | Ranking con el servidor caído |
+| `npm run test:layout` | 12 viewports: sin scroll, sin recortes, con el peor caso forzado |
+| `npm run test:functional` | Navegador real: flujo completo |
+| `npm run test:portal` | Build de portal servido desde subcarpeta con `/api` caído |
+| `npm run test:screenshots` | Capturas para las fichas de tienda |
+| `npm test` | Todo lo anterior, en orden |
+
+**Definición de "hecha"** para cualquier tarea: la funcionalidad está, **sus pruebas están en verde y documentadas**, y `npm test` sigue pasando entero.
+
+**Cómo se documenta una prueba:** ID · qué prueba · cómo · esperado · resultado (con el motivo si falla, no solo "falló") · estado.
+
+---
+
+## 10. Trampas conocidas — leer antes de repetirlas
+
+1. **Medir, no estimar.** Calcular el tamaño de carta restando una altura de cabecera *estimada* rompe el tablero en cuanto la cabecera real mide otra cosa (otro idioma, otra fuente, otra barra de navegador). Se mide el contenedor con un `ResizeObserver`.
+2. **Forzar el peor caso en los tests.** Un marcador que cabe con `00:07` se sale con `888:88`. Si el test no fuerza el peor caso, no prueba nada.
+3. **`overflow: hidden` sin `min-width`** hace que el texto se pinte encima del vecino en vez de recortarse. Abreviar no basta: hay que recortar además.
+4. **Nada de promoción automática de cartas.** Subir cartas solas hace movimientos que el jugador no quería. Lo que se automatiza es la *comodidad* (un toque promueve), nunca la *decisión*.
+5. **En Windows, `proc.kill()` mata el intérprete y deja vivo el proceso que escucha.** Los servidores de previsualización huérfanos se acumulan y tumban otro test con un `EADDRINUSE` que no tiene nada que ver. Puerto estricto y matar el árbol entero.
+6. **`tsc -b` puede emitir un `vite.config.js` junto al `.ts`**, y Vite da prioridad al `.js`: cualquier cambio en la configuración se queda sin efecto, en silencio. Salida del subproyecto redirigida fuera de la raíz.
+7. **Las reglas no se muestran en cada carga.** Solo la primera visita, y accesibles desde un botón. Dos pantallas antes de jugar, todas las veces, es la fuga de retención más barata de tapar.
+8. **La privacidad se promete referida al juego, nunca a la página.** En un portal, los anuncios y las cookies de alrededor son suyos. *"Este juego no recopila tus datos"* — jamás *"esta página no te rastrea"*.
+
+---
+
+## 11. Checklist para arrancar un solitario nuevo
+
+**Fase A — Esqueleto**
+1. Copiar la estructura de carpetas de §4 y la configuración (Vite con `base: "./"`, tsconfigs, scripts de `package.json`).
+2. Traer `core/` y `platform/` **sin tocar**. Si hay que tocar algo para que encaje, ese algo estaba mal cortado: se parametriza, no se duplica.
+3. Traer el arnés de tests completo.
+
+**Fase B — El juego**
+4. Escribir `game/` entero: reglas, reparto, puntuación. TypeScript puro y determinista por semilla.
+5. `test:smoke` con las reglas nuevas antes de dibujar nada.
+6. Tablero y componentes. Layout que se mide, no que se estima.
+7. `RULES.md` y textos de idiomas (nativo + inglés).
+
+**Fase C — Alrededor**
+8. Atadura del ranking + tabla en Supabase + `api/`, con el cron de keepalive.
+9. Privacidad: `public/privacidad.html`, distintivo visible y auditoría de que no hay ni un rastreador.
+10. Iconos, favicon y ficha de tienda.
+
+**Fase D — Salida**
+11. `npm test` entero en verde.
+12. `build:portal` + `pack:portal` (que valida límites y marcadores).
+13. Prueba manual en móvil real, en vertical y en apaisado. **Aquí es donde aparecen los fallos que ningún test automático ve.**
+
+---
+
+## 12. Lo que NO se copia del juego anterior
+
+Reglas, posiciones del tablero, puntuación, textos del reglamento, modos de dificultad, arte, nombre e icono. Si al arrancar el juego nº 3 aparece la tentación de copiar uno de estos, es señal de que la pieza debería estar parametrizada en la base común — y entonces se sube ahí, no se copia.

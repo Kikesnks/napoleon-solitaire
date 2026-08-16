@@ -1,12 +1,12 @@
 // Empaqueta `dist-portal/` en el .zip que se sube a los portales y verifica
 // de paso los límites técnicos de CrazyGames (el portal más exigente de los
 // tres): ≤ 1500 archivos, descarga inicial ≤ 20 MB para optar a portada en
-// móvil, y ningún sourcemap colado.
+// móvil, ningún sourcemap colado y ningún marcador sin rellenar.
 //
 // Uso: npm run build:portal && npm run pack:portal
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -16,6 +16,26 @@ const OUT_DIR = path.join(ROOT, "paquetes");
 /** Límite para entrar en la portada móvil de CrazyGames. */
 const LIMITE_INICIAL_MB = 20;
 const LIMITE_ARCHIVOS = 1500;
+
+// Convención del plan: los datos que aún no existen se escriben como marcador
+// literal ENTRE CORCHETES Y EN MAYÚSCULAS —`[EMAIL@CONTACTO.COM]`— para poder
+// localizarlos y rellenarlos de una pasada. Si uno de esos marcadores llega al
+// paquete, se sube al portal tal cual: `privacidad.html` viaja dentro del zip.
+// Se exige al menos un separador (_ @ . -) para no confundirlo con accesos por
+// índice del JS minificado (`t[A]`, `e[N]`...).
+const MARCADOR = /\[[A-Z0-9]+(?:[_@.\-][A-Z0-9]+)+\]/g;
+const EXT_TEXTO = new Set([".html", ".htm", ".css", ".js", ".json", ".webmanifest", ".svg", ".txt", ".md"]);
+
+/** Marcadores sin rellenar, agrupados por archivo. */
+function buscarMarcadores(ficheros: string[], raiz: string): Map<string, Set<string>> {
+  const hallazgos = new Map<string, Set<string>>();
+  for (const f of ficheros) {
+    if (!EXT_TEXTO.has(path.extname(f).toLowerCase())) continue;
+    const encontrados = readFileSync(f, "utf8").match(MARCADOR);
+    if (encontrados) hallazgos.set(path.relative(raiz, f), new Set(encontrados));
+  }
+  return hallazgos;
+}
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -57,6 +77,17 @@ function main(): void {
     console.error("  FAIL falta index.html en la raíz del paquete");
     problemas++;
   }
+
+  const marcadores = buscarMarcadores(ficheros, DIST);
+  if (marcadores.size > 0) {
+    console.error("  FAIL marcadores sin rellenar en el paquete:");
+    for (const [archivo, encontrados] of marcadores) {
+      console.error(`       ${archivo} → ${[...encontrados].join(", ")}`);
+    }
+    console.error("       Rellénalos, repite `npm run build:portal` y vuelve a empaquetar.");
+    problemas++;
+  }
+
   if (problemas > 0) process.exit(1);
 
   mkdirSync(OUT_DIR, { recursive: true });

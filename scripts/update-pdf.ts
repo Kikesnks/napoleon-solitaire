@@ -1,7 +1,7 @@
-// Genera una versión actualizada de Esquema_solitario_Napoleon.pdf añadiendo
-// un anexo con las reglas nuevas (visualización horizontal de B/B1/D/D1 y
-// stacking ascendente en las free cells). El PDF original se preserva como
-// Esquema_solitario_Napoleon.original.pdf.
+// Genera una versión actualizada de docs/esquemas/esquema_solitario_napoleon.pdf
+// añadiendo un anexo con las reglas nuevas (visualización horizontal de B/B1/D/D1
+// y stacking ascendente en las free cells). El PDF original se preserva como
+// docs/esquemas/esquema_solitario_napoleon.original.pdf.
 //
 // Uso: npx tsx scripts/update-pdf.ts
 
@@ -10,8 +10,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const ORIGINAL = path.join(ROOT, "Esquema_solitario_Napoleon.pdf");
-const BACKUP = path.join(ROOT, "Esquema_solitario_Napoleon.original.pdf");
+const ESQUEMAS = path.join(ROOT, "docs", "esquemas");
+const ORIGINAL = path.join(ESQUEMAS, "esquema_solitario_napoleon.pdf");
+const BACKUP = path.join(ESQUEMAS, "esquema_solitario_napoleon.original.pdf");
 
 async function main(): Promise<void> {
   const exists = await fs.stat(ORIGINAL).catch(() => null);

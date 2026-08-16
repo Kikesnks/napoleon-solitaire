@@ -22,9 +22,8 @@ vite.config.d.ts
 .~lock.*#
 ~$*
 
-# Configuración local de Claude Code y notas locales del autor
+# Configuración local de Claude Code
 .claude/
-FALLOS*.txt
 
 .vercel
 .env*.local
@@ -34,13 +33,13 @@ FALLOS*.txt
 dist-portal
 paquetes
 
-# Documentos de negocio y estrategia: no forman parte del proyecto técnico.
-plan_monetización.md
-plan_subida_portales.md
-ficha_portales.md
-informe_portales_1.md
-informe_asia_1.md
-informe_monetizar_1.md
-
-# Notas de trabajo del autor
-estadisticas.md
+# Documentación: se ignora POR CARPETA, no por nombre de archivo, para que no
+# dependa de que nadie renombre nada (principio rector nº 4).
+#   docs/vivos/     planes y fichas de negocio  → fuera del repo
+#   docs/informes/  investigación y estrategia  → fuera del repo
+#   docs/notas/     notas de trabajo del autor  → fuera del repo
+#   docs/esquemas/  reglamento gráfico (PDF/ODP) → SÍ viaja con el repo
+#   docs/tecnica/   documentación técnica        → SÍ viaja con el repo
+docs/vivos/
+docs/informes/
+docs/notas/

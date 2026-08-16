@@ -1,7 +1,7 @@
 # Reglas del Solitario Napoleón
 
 Versión consolidada que combina las reglas originales del PDF
-(`Esquema_solitario_Napoleon.pdf`) con las **adiciones** acordadas durante el
+([`docs/esquemas/esquema_solitario_napoleon.pdf`](./docs/esquemas/esquema_solitario_napoleon.pdf)) con las **adiciones** acordadas durante el
 desarrollo (marcadas como **NUEVO**).
 
 ## Objetivo
