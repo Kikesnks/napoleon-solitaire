@@ -445,11 +445,21 @@ async function main(): Promise<void> {
       fail(`el calendario ofrece días imposibles: ${futuros.join(", ")}`);
     }
 
+    // El total es el del MES ENTERO —28, 29, 30 o 31—, nunca más: un contador
+    // que enseñaba "32 retos" es imposible y se ve a la primera.
+    const hoyDate = new Date();
+    const diasDelMes = new Date(hoyDate.getFullYear(), hoyDate.getMonth() + 1, 0).getDate();
     const conteoColeccion = /(\d+)\s*\/\s*(\d+)/.exec(textoRacha);
-    if (conteoColeccion && Number(conteoColeccion[2]) === diasJugables.length * 2) {
-      ok(`B6.3 la colección se muestra aparte de la racha: "${conteoColeccion[0]}"`);
+    const totalMostrado = conteoColeccion ? Number(conteoColeccion[2]) : -1;
+    if (totalMostrado === diasDelMes) {
+      ok(`B6.3 la colección se muestra aparte de la racha: "${conteoColeccion?.[0]}"`);
     } else {
-      fail(`la colección no se muestra o no cuadra: "${textoRacha.trim()}"`);
+      fail(`la colección dice ${totalMostrado} y el mes tiene ${diasDelMes} días: "${textoRacha.trim()}"`);
+    }
+    if (totalMostrado >= 28 && totalMostrado <= 31) {
+      ok(`B6.6 el total cabe en un mes (${totalMostrado})`);
+    } else {
+      fail(`B6.6 el total ${totalMostrado} no puede ser el de ningún mes`);
     }
 
     // Un día pasado: se elige en el calendario y luego la dificultad. Si el mes
@@ -489,6 +499,56 @@ async function main(): Promise<void> {
       }
     } else {
       ok("B6.4-B6.5 sin días pasados que probar (hoy es día 1 del mes)");
+    }
+
+    // ---------- 10. Todos los botones responden al puntero y al teclado ----------
+    // Este fallo se ha reportado DOS veces —primero en los botones del reto,
+    // después en el de Cancelar— porque el amarillo se fue añadiendo elemento a
+    // elemento y el botón base se quedó sin él. Ahora la regla vive en
+    // `.hud__btn` y esto lo vigila: se recorren TODOS los botones del diálogo,
+    // no uno de muestra, que es como se coló el segundo.
+    const AMARILLO = "rgb(255, 209, 102)";
+    await page.click('button[aria-label="Nueva"]');
+    await page.waitForSelector(".suit-select__cancel", { timeout: 5000 });
+
+    const botonesDialogo = await page.$$(
+      ".suit-select__panel button:not(.daily-cal__day)"
+    );
+    const apagados: string[] = [];
+    for (const boton of botonesDialogo) {
+      await boton.hover();
+      // El borde tarda 0,15 s en llegar al amarillo. Leyendo antes se recoge un
+      // color intermedio y la prueba falla por su culpa, no por la del código.
+      await page.waitForTimeout(300);
+      const borde = await boton.evaluate((el) => getComputedStyle(el).borderTopColor);
+      // El primario ya es amarillo entero: se le mira el relleno, no el borde.
+      const relleno = await boton.evaluate((el) => getComputedStyle(el).backgroundColor);
+      const encendido = borde === AMARILLO || relleno === AMARILLO || relleno === "rgb(255, 224, 154)";
+      if (!encendido) {
+        apagados.push(((await boton.textContent()) ?? "?").trim().slice(0, 20));
+      }
+    }
+    if (apagados.length === 0) {
+      ok(`B6.7 los ${botonesDialogo.length} botones del diálogo se encienden al pasar el puntero`);
+    } else {
+      fail(`B6.7 no se encienden al pasar el puntero: ${apagados.join(" · ")}`);
+    }
+
+    // `:focus-visible` solo se activa si el foco llegó por teclado, así que hay
+    // que llegar tabulando de verdad: enfocar por programa no vale.
+    await page.mouse.move(0, 0);
+    await page.focus(".suit-select__cancel");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await page.waitForTimeout(300);
+    const bordeFoco = await page.$eval(
+      ".suit-select__cancel",
+      (el) => getComputedStyle(el).borderTopColor
+    );
+    if (bordeFoco === AMARILLO) {
+      ok("B6.8 y también al recibir el foco con el teclado");
+    } else {
+      fail(`B6.8 con el foco el borde es ${bordeFoco}, esperaba ${AMARILLO}`);
     }
   } finally {
     await browser.close();

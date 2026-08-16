@@ -236,47 +236,53 @@ const col = createDaily({
 });
 const hoy16 = dia("2026-08-16");
 
-check("a 16 de agosto hay 32 retos disponibles", col.collection(hoy16).total === 32);
+// El total es el MES ENTERO, no los días transcurridos: es una meta mensual y
+// por eso incluye los días que aún no han llegado. Y hay UN reto por día: la
+// dificultad es cómo se afronta, no un reto aparte. Así el contador nunca puede
+// pasar de los días que tiene el mes, que era el fallo que enseñaba "32".
+check("agosto tiene 31 retos, no 32", col.collection(hoy16).total === 31);
 check("y ninguno hecho", col.collection(hoy16).done === 0);
 
 col.recordResult({ date: "2026-08-16", variant: "2", score: 100, won: false });
 check("un reto hecho cuenta 1", col.collection(hoy16).done === 1);
 
 col.recordResult({ date: "2026-08-16", variant: "4", score: 100, won: false });
-check("las dos dificultades del mismo día cuentan 2", col.collection(hoy16).done === 2);
+check("hacer las dos dificultades del mismo día sigue contando 1", col.collection(hoy16).done === 1);
 
 col.recordResult({ date: "2026-08-16", variant: "2", score: 500, won: true });
-check("repetir un reto no lo cuenta dos veces", col.collection(hoy16).done === 2);
+check("repetir un reto tampoco lo cuenta dos veces", col.collection(hoy16).done === 1);
 
-// Este es el caso que describió el propietario: alguien entra el día 16 y se
-// hace el mes entero de una sentada. Colección llena, racha de 1 día.
+// El caso que describió el propietario: alguien entra el día 16 y se hace todo
+// lo que puede de una sentada. Colección al día, racha de 1.
 for (let d = 1; d <= 15; d++) {
   const fecha = `2026-08-${String(d).padStart(2, "0")}`;
   col.recordResult({ date: fecha, variant: "2", score: 200, won: false });
   col.recordResult({ date: fecha, variant: "4", score: 200, won: false });
 }
 col.markPlayed("2026-08-16");
-check("el mes entero de una sentada: 32 de 32", col.collection(hoy16).done === 32);
+check("los 16 días disponibles hechos de una sentada: 16 de 31", col.collection(hoy16).done === 16);
 check("...pero la racha sigue siendo de 1 día", col.streak(hoy16).current === 1);
+check(
+  "nunca se puede pasar del total",
+  col.collection(hoy16).done <= col.collection(hoy16).total
+);
 
 check(
-  "un reto de un día futuro no cuenta en la colección",
-  (() => {
-    col.recordResult({ date: "2026-08-25", variant: "2", score: 999, won: true });
-    return col.collection(hoy16).done === 32;
-  })()
-);
-check(
-  "ni uno del mes pasado",
+  "un resultado de otro mes no cuenta",
   (() => {
     col.recordResult({ date: "2026-07-30", variant: "2", score: 999, won: true });
-    return col.collection(hoy16).done === 32;
+    return col.collection(hoy16).done === 16;
   })()
 );
-check(
-  "sin declarar variantes no se cuenta nada",
-  createDaily({ storagePrefix: "test.daily", storage: memoria() }).collection(hoy16).total === 0
-);
+
+section("el total es el del mes que toca");
+const mesDe = (iso: string) =>
+  createDaily({ storagePrefix: "test.daily", storage: memoria(), variants: ["2", "4"] })
+    .collection(dia(iso)).total;
+check("febrero de un año normal: 28", mesDe("2027-02-10") === 28);
+check("febrero bisiesto: 29", mesDe("2028-02-10") === 29);
+check("abril: 30", mesDe("2026-04-10") === 30);
+check("diciembre: 31", mesDe("2026-12-10") === 31);
 
 // ============================================================
 section("B6 · el registro de acciones se guarda para poder acreditarlo");

@@ -69,13 +69,27 @@ export interface DailyOptions {
   /** Cuántos días de resultados se conservan (por no crecer sin fin). */
   keepDays?: number;
   /**
-   * Qué retos hay cada día, p. ej. `["2", "4"]`. Solo sirve para saber cuántos
-   * retos tiene el mes y poder decir "12 de 16". Si no se pasa, no se cuenta.
+   * Con qué dificultades se puede jugar el reto, p. ej. `["2", "4"]`. Sirve
+   * para descartar resultados de una variante que ya no existe. Si no se pasa,
+   * se cuentan todos.
    */
   variants?: readonly string[];
 }
 
-/** Cuántos retos del mes en curso lleva hechos el jugador, de cuántos hay. */
+/**
+ * El avance del mes: **un reto por día**, y el total son los días que tiene el
+ * mes —28, 29, 30 o 31—.
+ *
+ * Es una meta mensual, así que el total **incluye los días que aún no han
+ * llegado**: enseñar "2 de 31" el día 2 es lo que le da al jugador algo hacia
+ * lo que ir. Contar solo los días transcurridos daría "2 de 2", que no invita
+ * a nada. Esto no abre ningún reto futuro: quién se puede jugar lo sigue
+ * decidiendo `playableKeys`.
+ *
+ * Un día cuenta como hecho **cuando se ha terminado su reto en cualquiera de
+ * las dificultades**. Hacerlo en las dos no suma dos: el reto del día es uno y
+ * la dificultad es cómo se afronta.
+ */
 export interface DailyCollection {
   done: number;
   total: number;
@@ -321,15 +335,22 @@ export function createDaily(opts: DailyOptions): Daily {
       readReplays().find((x) => sameChallenge(x, date, variant)) ?? null,
 
     collection(now = new Date()) {
-      const dias = new Set(playableRange(now));
-      // Un mismo reto se cuenta una sola vez, por si el almacenamiento trajera
-      // duplicados de una versión anterior.
-      const hechos = new Set(
+      // El día 0 del mes siguiente es el último del actual: 28, 29, 30 o 31.
+      const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const mes = keyOf(now).slice(0, 8); // "AAAA-MM-"
+      // Por DÍA, no por resultado: hacer las dos dificultades del mismo día no
+      // cuenta dos veces, y un almacenamiento con duplicados de una versión
+      // anterior tampoco puede inflar la cuenta.
+      const dias = new Set(
         readResults()
-          .filter((r) => dias.has(r.date) && variants.includes(r.variant))
-          .map((r) => `${r.date}|${r.variant}`)
+          .filter(
+            (r) =>
+              r.date.slice(0, 8) === mes &&
+              (variants.length === 0 || variants.includes(r.variant))
+          )
+          .map((r) => r.date)
       );
-      return { done: hechos.size, total: dias.size * variants.length };
+      return { done: dias.size, total };
     }
   };
 }

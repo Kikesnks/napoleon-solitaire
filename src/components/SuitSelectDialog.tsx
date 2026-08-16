@@ -149,9 +149,12 @@ export function SuitSelectDialog({
 
           {/*
             Racha y colección, contadas por separado a propósito: quien se haga
-            treinta retos atrasados en una tarde verá "racha 1 día · 30 de 30".
+            quince retos atrasados en una tarde verá "racha 1 día · 15 de 31".
             La racha solo la consigue quien vuelve cada día, y es lo que empuja
             a volver; la colección es lo que le da algo que hacer hoy.
+
+            La colección va por DÍAS y su total es el mes entero. Hacer las dos
+            dificultades del mismo día no suma dos: el reto del día es uno.
           */}
           <p className="suit-select__daily-streak">
             {dailyStreak > 0 && (

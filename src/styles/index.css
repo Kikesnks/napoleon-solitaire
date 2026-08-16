@@ -223,7 +223,20 @@ button {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, transform 0.05s;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+/* El amarillo al pasar por encima y al recibir el foco va AQUÍ, en el botón
+   base, y no en cada sitio que lo usa. Se fue añadiendo suelto —a las tarjetas
+   de partida libre, a los botones del reto, al calendario— y el botón base se
+   quedó sin él, así que el mismo fallo reaparecía en cada pantalla nueva: el
+   último botón del diálogo no se encendía y el foco de tabulación se pintaba
+   con el contorno del navegador. Puesto en la base, se acaba la serie. */
+.hud__btn:hover:not(:disabled),
+.hud__btn:focus-visible {
+  border-color: var(--primary);
+  background: rgba(255, 209, 102, 0.12);
+  outline: none;
 }
 
 .hud__btn:active {
@@ -239,6 +252,14 @@ button {
   background: var(--primary);
   color: #000;
   border-color: var(--primary);
+}
+
+/* El primario ya ES amarillo: un borde amarillo encima no se vería. Se aclara
+   el relleno, que es lo único que puede destacar sobre sí mismo. */
+.hud__btn--primary:hover:not(:disabled),
+.hud__btn--primary:focus-visible {
+  background: #ffe09a;
+  border-color: #ffe09a;
 }
 
 /* ---------- 4. Tablero — grid en cruz ----------
@@ -849,6 +870,16 @@ button {
   color: #0b3d1f;
   background: #ffffff;
   border-color: #c7c1b3;
+}
+
+/* Este vive sobre el pie CLARO de las reglas, así que hereda el amarillo del
+   botón base y desaparece. Se marca en verde oscuro, que es lo que contrasta
+   sobre blanco — y este botón no puede pasar desapercibido: lleva a la
+   política de privacidad, que es nuestro argumento de venta. */
+.instructions__privacy-link:hover:not(:disabled),
+.instructions__privacy-link:focus-visible {
+  background: #f2efe6;
+  border-color: #0b3d1f;
 }
 
 .instructions__privacy-link:hover {
