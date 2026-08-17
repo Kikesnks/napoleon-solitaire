@@ -8,9 +8,15 @@ interface Props {
   category: LeaderboardCategory;
   score: number;
   onSave(name: string): void;
+  /**
+   * Cerrar sin enviar nada. No es un adorno: participar en el ranking se
+   * aprobó **como voluntario**, y mientras este diálogo no tuvo salida no lo
+   * era — la única forma de no dar un nombre era recargar la página.
+   */
+  onSkip(): void;
 }
 
-export function NameEntryDialog({ lang, category, score, onSave }: Props) {
+export function NameEntryDialog({ lang, category, score, onSave, onSkip }: Props) {
   const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const t = STRINGS[lang];
@@ -52,14 +58,19 @@ export function NameEntryDialog({ lang, category, score, onSave }: Props) {
             if (e.key === "Enter") handleSave();
           }}
         />
-        <button
-          type="button"
-          className="hud__btn hud__btn--primary lb-entry__btn"
-          onClick={handleSave}
-          disabled={!name.trim()}
-        >
-          {t.lbSave}
-        </button>
+        <div className="lb-entry__actions">
+          <button type="button" className="hud__btn lb-entry__skip" onClick={onSkip}>
+            {t.notNow}
+          </button>
+          <button
+            type="button"
+            className="hud__btn hud__btn--primary lb-entry__btn"
+            onClick={handleSave}
+            disabled={!name.trim()}
+          >
+            {t.lbSave}
+          </button>
+        </div>
       </div>
     </div>
   );

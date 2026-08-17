@@ -699,6 +699,20 @@ button {
   font-weight: 700;
 }
 
+/* Fin de partida: la acción que propone el cartel y la de irse sin hacerla.
+   La salida va primero y sin relleno —es el "no"— pero tiene el mismo tamaño
+   de toque: en un móvil, un botón discreto que no se puede pulsar no es una
+   salida. */
+.overlay__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.overlay__dismiss {
+  min-width: 100px;
+}
+
 /* ---------- Botón icono del HUD (📖 Reglas) ---------- */
 .hud__btn--icon {
   padding: 6px 10px;
@@ -797,8 +811,28 @@ button {
   }
 }
 
+/* Sobre el papel claro de las instrucciones (#fdfaf3) el amarillo de acento no
+   se ve: aquí el resalte es el verde de la marca, igual que en el enlace de
+   privacidad y en el selector de dificultad del ranking. Lo que no cambia es
+   la regla: TODO control se enciende al pasar por encima y al recibir el foco
+   con el teclado, y nunca con el contorno por defecto del navegador. */
+.instructions__lang-btn:hover,
+.instructions__lang-btn:focus-visible {
+  background: rgba(11, 61, 31, 0.12);
+  color: #0b3d1f;
+  outline: none;
+}
+
 .instructions__lang-btn.is-active {
   background: #0b3d1f;
+  color: #fff;
+}
+
+/* La activa ya es verde entera: se aclara, que es lo único que destaca sobre
+   sí misma — el mismo compromiso que el botón primario con el amarillo. */
+.instructions__lang-btn.is-active:hover,
+.instructions__lang-btn.is-active:focus-visible {
+  background: #15633a;
   color: #fff;
 }
 
@@ -1276,8 +1310,23 @@ button {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* Dos botones: guardar y salir sin guardar. La salida va primero y más
+   discreta —el sitio natural del "no"—, pero tiene que estar: participar en el
+   ranking se aprobó como voluntario. */
+.lb-entry__actions {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.lb-entry__skip {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
 .lb-entry__btn {
-  width: 100%;
+  flex: 1;
   padding: 12px;
   font-size: 15px;
 }
@@ -1420,13 +1469,40 @@ button {
   color: rgba(240, 224, 160, 0.7);
 }
 
+/* Las pestañas también se encienden. Dos fondos, dos acentos: verde sobre la
+   cabecera clara de "no ganadas", amarillo sobre la oscura de "ganadas". */
+.lb-viewer__tab:hover,
+.lb-viewer__tab:focus-visible {
+  background: rgba(11, 61, 31, 0.12);
+  color: #0b3d1f;
+  outline: none;
+}
+
+.lb-viewer__header--won .lb-viewer__tab:hover,
+.lb-viewer__header--won .lb-viewer__tab:focus-visible {
+  background: rgba(255, 209, 102, 0.18);
+  color: var(--primary);
+}
+
 .lb-viewer__tab.is-active {
   background: #0b3d1f;
   color: #fff;
 }
 
+.lb-viewer__tab.is-active:hover,
+.lb-viewer__tab.is-active:focus-visible {
+  background: #15633a;
+  color: #fff;
+}
+
 .lb-viewer__header--won .lb-viewer__tab.is-active {
   background: #c8a000;
+  color: #000;
+}
+
+.lb-viewer__header--won .lb-viewer__tab.is-active:hover,
+.lb-viewer__header--won .lb-viewer__tab.is-active:focus-visible {
+  background: var(--primary);
   color: #000;
 }
 
@@ -1475,10 +1551,25 @@ button {
   color: #fff;
 }
 
+.lb-viewer__suit.is-active:hover,
+.lb-viewer__suit.is-active:focus-visible {
+  background: #15633a;
+  border-color: #15633a;
+}
+
 .lb-viewer__header--won .lb-viewer__suit.is-active {
   background: #c8a000;
   border-color: #c8a000;
   color: #000;
+}
+
+/* Sobre la cabecera de "ganadas", la dificultad activa ya es dorada: se sube
+   al amarillo de acento, que es lo único que destaca sobre el dorado. Cada
+   combinación de "activo × fondo" necesita la suya — la general no llega. */
+.lb-viewer__header--won .lb-viewer__suit.is-active:hover,
+.lb-viewer__header--won .lb-viewer__suit.is-active:focus-visible {
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 /* Qué tabla se está viendo, en el diálogo de fin de partida. */
@@ -1820,6 +1911,15 @@ button {
   color: #1a1a1a;
 }
 
+/* El elegido ya es amarillo entero; el amarillo de encima no se vería, así que
+   se aclara. Sin esto el único botón del calendario que no respondía al puntero
+   era justo el que el jugador tiene debajo del dedo. */
+.daily-cal__day--selected:hover,
+.daily-cal__day--selected:focus-visible {
+  background: #ffe09a;
+  border-color: #ffe09a;
+}
+
 .daily-cal__num {
   font-size: 12px;
   font-weight: 700;
@@ -2004,13 +2104,25 @@ button {
   margin-top: 8px;
   border: 0;
   background: transparent;
-  padding: 0;
+  padding: 2px 4px;
   font: inherit;
   font-size: 0.9em;
   font-weight: 700;
   color: #0b3d1f;
   text-decoration: underline;
   cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+/* Este parece un enlace, pero es un botón y se comporta como tal: se enciende
+   con el puntero y con el foco del teclado. Se le escapó al arreglo del botón
+   base porque no lleva la clase `.hud__btn`. */
+.privacy-note__link:hover,
+.privacy-note__link:focus-visible {
+  background: rgba(11, 61, 31, 0.14);
+  color: #062d16;
+  outline: none;
 }
 
 

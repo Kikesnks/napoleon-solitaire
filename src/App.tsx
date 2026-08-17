@@ -79,19 +79,28 @@ export default function App() {
   >(firstRun ? "firstrun" : null);
 
   /**
-   * ¿Se puede salir del selector sin empezar partida? Sí siempre que haya algo
-   * detrás a lo que volver: la partida en curso o el resultado que se acaba de
-   * ver — `GameOverlay` sigue montado debajo mientras la partida esté acabada,
-   * así que cancelar devuelve la puntuación y el tiempo intactos. Solo el
-   * arranque inicial obliga a elegir: detrás no hay nada que el jugador haya
-   * visto todavía.
+   * ¿Se puede salir del selector sin empezar partida? **Siempre.** Venga de
+   * donde venga, detrás hay una partida repartida y jugable: la que estaba en
+   * curso, la que se acaba de terminar —`GameOverlay` sigue montado debajo, así
+   * que cancelar devuelve puntuación y tiempo intactos— o, en el primer
+   * arranque, la que el motor reparte antes de pintar nada. Quien cancele ahí
+   * juega con la dificultad por defecto y tiene "Nueva" en el HUD para elegir
+   * cuando quiera.
    *
    * Un único valor para el botón y para Escape. Antes eran dos condiciones
    * iguales escritas por separado y el diálogo del fin de partida se quedó sin
    * las dos salidas a la vez: ni botón ni tecla, con el calendario del reto
    * dentro y ninguna forma de volver al resultado.
    */
-  const canCancelSuits = pendingSuitSource === "hud" || pendingSuitSource === "gameover";
+  const canCancelSuits = pendingSuitSource !== null;
+
+  /**
+   * Cartel del fin de partida apartado a petición del jugador. Cerrarlo no
+   * cuesta nada —el resultado ya está registrado y el botón "Nueva" del HUD
+   * sigue en su sitio— y deja ver el tablero como quedó, que es lo que uno
+   * quiere mirar justo después de perder. Se rearma solo al empezar otra.
+   */
+  const [resultDismissed, setResultDismissed] = useState(false);
 
   // ── Liga de Campeones ─────────────────────────────────────────────────────
   // El flujo es asíncrono porque la persistencia es en servidor (Supabase):
@@ -161,8 +170,10 @@ export default function App() {
     prevStatusRef.current = cur;
 
     if (cur === "playing") {
-      // Nueva partida empezada: limpiar estado de leaderboard.
+      // Nueva partida empezada: limpiar estado de leaderboard y rearmar el
+      // cartel del fin de partida, que el jugador pudo haber apartado.
       setLbPhase({ step: "idle" });
+      setResultDismissed(false);
       return;
     }
     if (prev !== "playing") return; // ya gestionado en esta partida
@@ -275,6 +286,12 @@ export default function App() {
 
   // Atajos de teclado: U para deshacer, Espacio para repartir, Escape para
   // cerrar instrucciones. Se desactivan cuando el modal está abierto (excepto Escape).
+  //
+  // ESCAPE CIERRA EL DIÁLOGO QUE ESTÉ DELANTE, SIEMPRE. Los diálogos se pintan
+  // apilados y aquí se recorren en el mismo orden en que el jugador los ve, del
+  // más alto al más bajo: privacidad → reglas → selector → ranking → resultado.
+  // La única excepción es el envío en curso, que no tiene nada que cancelar
+  // porque la petición ya salió; se cierra sola al responder el servidor.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // La política se abre ENCIMA de las reglas, así que se cierra primero.
@@ -300,10 +317,28 @@ export default function App() {
         return;
       }
       if (pendingSuitSource !== null) return;
-      // Bloquear atajos mientras el leaderboard esté activo.
-      if (lbPhase.step !== "idle") return;
+      // Bloquear atajos mientras el leaderboard esté activo — pero dejando
+      // salir. "Ahora no" en el cartel del nombre y Escape hacen lo mismo:
+      // seguir sin enviar. Es la condición con la que se aprobó el ranking.
+      if (lbPhase.step !== "idle") {
+        if (e.key === "Escape" && lbPhase.step !== "submitting") {
+          e.preventDefault();
+          handleLbAccept();
+        }
+        return;
+      }
       if (showLbViewer) {
         if (e.key === "Escape") { e.preventDefault(); setShowLbViewer(false); }
+        return;
+      }
+      // El cartel del fin de partida: cerrarlo enseña el tablero como quedó.
+      // No se pierde nada — la partida ya está registrada y el botón "Nueva"
+      // del HUD sigue ahí para empezar otra.
+      if (state.status !== "playing" && !resultDismissed) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setResultDismissed(true);
+        }
         return;
       }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
@@ -318,7 +353,16 @@ export default function App() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, showRules, showPrivacy, pendingSuitSource, lbPhase.step, showLbViewer]);
+  }, [
+    engine,
+    showRules,
+    showPrivacy,
+    pendingSuitSource,
+    lbPhase.step,
+    showLbViewer,
+    state.status,
+    resultDismissed
+  ]);
 
   const dismissRules = () => {
     if (firstRun) markSeen();
@@ -394,17 +438,22 @@ export default function App() {
         />
       </main>
       {state.status === "won" && <Confetti />}
-      <GameOverlay
-        lang={lang}
-        status={state.status}
-        score={state.score}
-        elapsedMs={elapsedMs}
-        onPlayAgain={() => setPendingSuitSource("gameover")}
-        dailyDate={dailyGameDate}
-        todayKey={dailyTodayKey}
-        dailyStreak={dailyStreak.current}
-        dailyCollections={dailyCollections}
-      />
+      {/* Apartado por el jugador: se le quita de en medio, no se le miente al
+          componente sobre el estado de la partida. */}
+      {!resultDismissed && (
+        <GameOverlay
+          lang={lang}
+          status={state.status}
+          score={state.score}
+          elapsedMs={elapsedMs}
+          onPlayAgain={() => setPendingSuitSource("gameover")}
+          onClose={() => setResultDismissed(true)}
+          dailyDate={dailyGameDate}
+          todayKey={dailyTodayKey}
+          dailyStreak={dailyStreak.current}
+          dailyCollections={dailyCollections}
+        />
+      )}
       {showRules && (
         <Instructions
           lang={lang}
@@ -435,6 +484,7 @@ export default function App() {
           category={lbPhase.category}
           score={lbPhase.score}
           onSave={handleLbNameSave}
+          onSkip={handleLbAccept}
         />
       )}
       {lbPhase.step === "submitting" && (

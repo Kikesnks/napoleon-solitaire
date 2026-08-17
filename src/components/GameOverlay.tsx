@@ -10,6 +10,11 @@ interface Props {
   score: number;
   elapsedMs: number;
   onPlayAgain(): void;
+  /**
+   * Aparta el cartel y deja ver el tablero como quedó. No se pierde nada: el
+   * resultado ya está registrado y "Nueva" sigue en el HUD.
+   */
+  onClose(): void;
   /** Fecha del reto que acaba de terminar, o `null` si era partida libre. */
   dailyDate: string | null;
   /** Hoy, para saber si el reto jugado era el del día o uno atrasado. */
@@ -26,6 +31,7 @@ export function GameOverlay({
   score,
   elapsedMs,
   onPlayAgain,
+  onClose,
   dailyDate,
   todayKey,
   dailyStreak,
@@ -81,9 +87,17 @@ export function GameOverlay({
             <dd>{formatElapsed(elapsedMs)}</dd>
           </div>
         </dl>
-        <button type="button" className="hud__btn hud__btn--primary" onClick={onPlayAgain}>
-          {t.playAgain}
-        </button>
+        {/* Dos salidas, como todos los diálogos: la que propone el cartel y la
+            de irse sin hacerla. Aquí "Ahora no" enseña el tablero como quedó,
+            que es lo que uno quiere mirar justo después de perder. */}
+        <div className="overlay__actions">
+          <button type="button" className="hud__btn overlay__dismiss" onClick={onClose}>
+            {t.notNow}
+          </button>
+          <button type="button" className="hud__btn hud__btn--primary" onClick={onPlayAgain}>
+            {t.playAgain}
+          </button>
+        </div>
       </div>
     </div>
   );

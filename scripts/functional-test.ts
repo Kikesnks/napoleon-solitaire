@@ -4,7 +4,7 @@
 //  - Deshacer 3 veces.
 //  - Verifica que la carta superior del montón está boca abajo.
 
-import { chromium } from "playwright";
+import { chromium, type ElementHandle } from "playwright";
 import { startPreview, stopPreview } from "./preview-server.ts";
 // El mismo mecanismo del reto diario que usa la aplicación: así el test puede
 // calcular la semilla que DEBERÍA haberse jugado, en vez de confiar en ella.
@@ -77,13 +77,14 @@ async function main(): Promise<void> {
     } else {
       fail(`selector de palos: esperaba 2 opciones, hay ${suitOptions.length}`);
     }
-    // En el primer arranque NO hay salida, y es a propósito: detrás no hay
-    // ninguna partida que el jugador haya visto todavía. En los demás casos sí
-    // la hay, y esa asimetría la vigila B6.11.
-    if ((await page.$(".suit-select__cancel")) === null) {
-      ok("B6.13 el primer arranque obliga a elegir dificultad (sin Cancelar)");
+    // También en el primer arranque: por decisión del propietario, TODOS los
+    // diálogos dejan salir. Detrás hay una partida repartida y jugable —el
+    // motor reparte antes de pintar nada—, y quien cancele juega con la
+    // dificultad por defecto con "Nueva" a un clic.
+    if (await page.$(".suit-select__cancel")) {
+      ok("B6.13 el selector del primer arranque también deja salir");
     } else {
-      fail("B6.13 el primer arranque ofrece Cancelar y no debería");
+      fail("B6.13 el selector del primer arranque no tiene botón de salida");
     }
 
     await suitOptions[1].click(); // 4 palos (baraja completa)
@@ -670,6 +671,236 @@ async function main(): Promise<void> {
         } else {
           fail(`B6.14 tras cancelar: puntos ${puntosAntes?.trim()} → ${puntosDespues?.trim()}`);
         }
+      }
+    }
+
+    // ---------- 12. TODOS los diálogos: salida y resalte en TODOS sus botones --
+    // Encargo del propietario tras el fallo del selector: botón de salir y
+    // Escape en todos los cuadros de diálogo, y que todo control se encienda
+    // con el puntero y con el foco de teclado.
+    //
+    // El resalte no se comprueba contra un color fijo. Hay dos paletas —el
+    // amarillo de acento sobre los paneles oscuros y el verde de la marca sobre
+    // el papel claro de las reglas y el ranking, donde el amarillo no se ve— y
+    // fijar un color obligaría a mantener la lista a mano. Lo que se exige es
+    // la regla de verdad: **algo tiene que cambiar**, y el foco no puede
+    // resolverse con el contorno por defecto del navegador (`outline: auto`),
+    // que es exactamente lo que el propietario vio como "blanco negrita".
+    interface Aspecto {
+      borde: string;
+      fondo: string;
+      texto: string;
+      contorno: string;
+    }
+    const aspectoDe = (el: ElementHandle<SVGElement | HTMLElement>) =>
+      el.evaluate((n): Aspecto => {
+        const s = getComputedStyle(n);
+        return {
+          borde: s.borderTopColor,
+          fondo: s.backgroundColor,
+          texto: s.color,
+          contorno: `${s.outlineStyle} ${s.outlineColor} ${s.outlineWidth}`
+        };
+      });
+    const cambia = (a: Aspecto, b: Aspecto) =>
+      a.borde !== b.borde || a.fondo !== b.fondo || a.texto !== b.texto;
+
+    /**
+     * Recorre todos los botones de un diálogo. `:focus-visible` solo se activa
+     * si el foco llegó por teclado, así que hay que tabular de verdad: enfocar
+     * por programa no vale (el navegador lo trata como foco de ratón).
+     */
+    async function recorrerBotones(raiz: string, nombre: string): Promise<void> {
+      // La raíz puede ser una lista ("ganada o perdida"): hay que repartir el
+      // sufijo por cada alternativa. Concatenado a pelo, `a, b button` busca
+      // el propio `a` —que no es un botón— y la prueba mide el panel entero.
+      const selector = raiz
+        .split(",")
+        .map((s) => `${s.trim()} button:not(:disabled)`)
+        .join(", ");
+      const botones = await page.$$(selector);
+      if (botones.length === 0) {
+        fail(`B9 "${nombre}": no se encontró ningún botón que probar`);
+        return;
+      }
+      const sinPuntero: string[] = [];
+      const sinFoco: string[] = [];
+      for (const boton of botones) {
+        const etiqueta = ((await boton.textContent()) ?? "?").replace(/\s+/g, " ").trim().slice(0, 18);
+
+        const reposo = await aspectoDe(boton);
+        await boton.hover();
+        // El cambio tarda 0,15 s. Leyendo antes se recoge un color intermedio y
+        // la prueba falla por su culpa, no por la del código.
+        await page.waitForTimeout(300);
+        const conPuntero = await aspectoDe(boton);
+        if (!cambia(reposo, conPuntero)) {
+          sinPuntero.push(`${etiqueta} [borde ${reposo.borde}, fondo ${reposo.fondo}]`);
+        }
+
+        await page.mouse.move(0, 0);
+        await page.waitForTimeout(250);
+        await boton.evaluate((el) => (el as HTMLElement).focus());
+        await page.keyboard.press("Shift+Tab");
+        await page.keyboard.press("Tab");
+        const loTiene = await boton.evaluate((el) => document.activeElement === el);
+        if (!loTiene) {
+          // Es el primero de la página: al retroceder se sale del documento.
+          await boton.evaluate((el) => (el as HTMLElement).focus());
+          await page.keyboard.press("Tab");
+          await page.keyboard.press("Shift+Tab");
+        }
+        await page.waitForTimeout(300);
+        const conFoco = await aspectoDe(boton);
+        if (!cambia(reposo, conFoco) || conFoco.contorno.startsWith("auto")) {
+          sinFoco.push(`${etiqueta}${conFoco.contorno.startsWith("auto") ? " (contorno del navegador)" : ""}`);
+        }
+        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      }
+
+      if (sinPuntero.length === 0) {
+        ok(`B9 "${nombre}": los ${botones.length} botones se encienden con el puntero`);
+      } else {
+        fail(`B9 "${nombre}": no se encienden con el puntero: ${sinPuntero.join(" · ")}`);
+      }
+      if (sinFoco.length === 0) {
+        ok(`B9 "${nombre}": y también con el foco del teclado`);
+      } else {
+        fail(`B9 "${nombre}": no se encienden con el foco: ${sinFoco.join(" · ")}`);
+      }
+    }
+
+    /** Comprueba que Escape cierra un diálogo abierto. */
+    async function escapeCierra(raiz: string, nombre: string): Promise<boolean> {
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+      const cerrado = (await page.$(raiz)) === null;
+      if (cerrado) {
+        ok(`B9 "${nombre}": Escape lo cierra`);
+      } else {
+        fail(`B9 "${nombre}": Escape no lo cierra`);
+      }
+      return cerrado;
+    }
+
+    // --- 12a. Fin de partida (visible ahora mismo tras el bloque 11) ---
+    await recorrerBotones(".overlay__panel--lose, .overlay__panel--win", "fin de partida");
+    if (await escapeCierra(".overlay__panel--lose, .overlay__panel--win", "fin de partida")) {
+      // Cerrarlo enseña el tablero; el resultado ya está registrado y "Nueva"
+      // sigue en el HUD, así que el jugador no se queda sin nada que hacer.
+      if (await page.$('button[aria-label="Nueva"]')) {
+        ok("B9 al apartar el cartel del fin de partida sigue habiendo 'Nueva' en el HUD");
+      } else {
+        fail("B9 apartar el cartel del fin de partida deja al jugador sin salida");
+      }
+    }
+
+    // --- 12b. Selector de dificultad ---
+    await page.click('button[aria-label="Nueva"]');
+    await page.waitForSelector(".suit-select", { timeout: 5000 });
+    await recorrerBotones(".suit-select__panel", "selector de dificultad");
+    await escapeCierra(".suit-select", "selector de dificultad");
+
+    // --- 12c. Instrucciones y política de privacidad ---
+    await page.click('button[aria-label="Reglas"]');
+    await page.waitForSelector(".instructions", { timeout: 5000 });
+    await page.click(".instructions__privacy-link");
+    await page.waitForSelector(".privacy", { timeout: 5000 });
+    await recorrerBotones(".privacy__panel", "política de privacidad");
+    await escapeCierra(".privacy", "política de privacidad");
+    await recorrerBotones(".instructions__panel", "instrucciones");
+    await escapeCierra(".instructions", "instrucciones");
+
+    // --- 12d. Visor del ranking ---
+    await page.click('button[aria-label="LIGA DE CAMPEONES"]');
+    await page.waitForSelector(".lb-viewer", { timeout: 5000 });
+    await page.waitForTimeout(400); // que termine de cargar la tabla
+    await recorrerBotones(".lb-viewer__panel", "visor del ranking (ganadas)");
+    // Y con la otra pestaña: la cabecera cambia de oscura a clara y con ella
+    // toda la paleta, así que el botón activo de cada combinación necesita su
+    // propia regla. Recorrer solo el estado inicial dejaba la mitad sin mirar.
+    await page.click(".lb-viewer__tab:not(.is-active)");
+    await page.waitForTimeout(300);
+    await page.click(".lb-viewer__suit:not(.is-active)");
+    await page.waitForTimeout(400);
+    await recorrerBotones(".lb-viewer__panel", "visor del ranking (no ganadas)");
+    await escapeCierra(".lb-viewer", "visor del ranking");
+
+    // --- 12e. El cartel del nombre: participar es VOLUNTARIO ---
+    // Con el ranking vacío, la siguiente partida clasifica y aparece el cartel.
+    // Hasta hoy no tenía salida: ni botón, ni Escape, ni forma de seguir sin
+    // dar un nombre. Contradecía la condición con la que se aprobó.
+    await page.evaluate(() => {
+      for (const tabla of ["won-2", "won-4", "lost-2", "lost-4"]) {
+        window.localStorage.removeItem(`solnap.lb.${tabla}`);
+      }
+    });
+    await page.click('button[aria-label="Nueva"]');
+    await page.waitForSelector(".suit-select__option", { timeout: 5000 });
+    await (await page.$$(".suit-select__option"))[1].click();
+    await page.waitForTimeout(1600); // reparto animado
+
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    let repartos2 = 0;
+    while (repartos2 < 300 && (await page.$(".lb-entry")) === null) {
+      await page.keyboard.press("Space");
+      repartos2++;
+      await page.waitForTimeout(5);
+    }
+
+    if ((await page.$(".lb-entry")) === null) {
+      fail(`B9 el cartel del nombre no apareció tras ${repartos2} repartos con el ranking vacío`);
+    } else {
+      // Con el campo vacío, "Guardar" está deshabilitado y el recorrido lo
+      // saltaría: se escribe antes para que los dos botones se miren de verdad.
+      await page.fill(".lb-entry__input", "PRUEBA");
+      await recorrerBotones(".lb-entry__panel", "nombre para el ranking");
+      if (await escapeCierra(".lb-entry", "nombre para el ranking")) {
+        const guardado = await page.evaluate(() =>
+          window.localStorage.getItem("solnap.lb.lost-4")
+        );
+        if (guardado === null) {
+          ok("B9 salir del cartel del nombre NO envía nada: participar es voluntario");
+        } else {
+          fail(`B9 salir del cartel del nombre guardó una puntuación: ${guardado}`);
+        }
+      }
+    }
+
+    // --- 12f. La tabla que aparece tras enviar ---
+    // Se llega dando un nombre de verdad; sin servidor, el envío cae al ranking
+    // local y la tabla se pinta igual.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    let repartos3 = 0;
+    while (repartos3 < 300 && (await page.$(".overlay__panel--lose, .overlay__panel--win")) === null) {
+      await page.keyboard.press("Space");
+      repartos3++;
+      await page.waitForTimeout(5);
+    }
+    await page.click(".overlay__panel--lose .hud__btn--primary, .overlay__panel--win .hud__btn--primary");
+    await page.waitForSelector(".suit-select__option", { timeout: 5000 });
+    await (await page.$$(".suit-select__option"))[1].click();
+    await page.waitForTimeout(1600);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    let repartos4 = 0;
+    while (repartos4 < 300 && (await page.$(".lb-entry")) === null) {
+      await page.keyboard.press("Space");
+      repartos4++;
+      await page.waitForTimeout(5);
+    }
+    const hayCartel = await page.$(".lb-entry__input");
+    if (hayCartel === null) {
+      fail("B9 no se pudo llegar a la tabla del ranking: el cartel del nombre no salió");
+    } else {
+      await page.fill(".lb-entry__input", "PRUEBA");
+      await page.click(".lb-entry__btn");
+      const tabla = await page.waitForSelector(".lb-dialog", { timeout: 5000 }).catch(() => null);
+      if (tabla === null) {
+        fail("B9 tras guardar el nombre no apareció la tabla del ranking");
+      } else {
+        await recorrerBotones(".lb-dialog__panel", "tabla del ranking");
+        await escapeCierra(".lb-dialog", "tabla del ranking");
       }
     }
   } finally {

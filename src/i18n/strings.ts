@@ -53,6 +53,13 @@ export interface UIStrings {
   wonMessage: string;
   lostMessage: string;
   playAgain: string;
+  /**
+   * Cierra un cartel sin hacer lo que propone. Todo diálogo tiene que dejar
+   * salir sin actuar: en el fin de partida enseña el tablero como quedó, y en
+   * el cartel del ranking sirve para NO dar un nombre — participar es
+   * voluntario, y sin esta salida no lo era.
+   */
+  notNow: string;
   // Selector de palos
   chooseSuits: string;
   twoSuits: string;
@@ -133,6 +140,7 @@ export const STRINGS: Record<Lang, UIStrings> = {
     wonMessage: "Solitario completado.",
     lostMessage: "Se acabaron los repartos del montón sin ordenar todas las cartas.",
     playAgain: "Jugar otra",
+    notNow: "Ahora no",
     chooseSuits: "¿Con cuántos palos?",
     twoSuits: "2 palos",
     fourSuits: "4 palos",
@@ -207,6 +215,7 @@ export const STRINGS: Record<Lang, UIStrings> = {
     wonMessage: "Solitaire complete.",
     lostMessage: "The stock was exhausted before all cards could be ordered.",
     playAgain: "Play again",
+    notNow: "Not now",
     chooseSuits: "How many suits?",
     twoSuits: "2 suits",
     fourSuits: "4 suits",
@@ -279,6 +288,7 @@ export const STRINGS: Record<Lang, UIStrings> = {
     wonMessage: "Réussite complétée.",
     lostMessage: "Le talon est épuisé sans avoir pu ranger toutes les cartes.",
     playAgain: "Rejouer",
+    notNow: "Pas maintenant",
     chooseSuits: "Avec combien de couleurs ?",
     twoSuits: "2 couleurs",
     fourSuits: "4 couleurs",
