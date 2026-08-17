@@ -8,7 +8,12 @@ import { SuitIcon } from "./SuitIcon";
 
 interface Props {
   lang: Lang;
-  /** Si false, no se muestra el botón Cancelar (primer arranque o partida acabada). */
+  /**
+   * Si false, no se muestra el botón Cancelar. Solo pasa en el primer arranque:
+   * detrás no hay ninguna partida que el jugador haya visto. Lo decide `App`,
+   * que es quien sabe si hay algo a lo que volver, y el mismo valor gobierna la
+   * tecla Escape para que botón y teclado no puedan discrepar.
+   */
   canCancel: boolean;
   onSelect(mode: SuitMode): void;
   onCancel(): void;

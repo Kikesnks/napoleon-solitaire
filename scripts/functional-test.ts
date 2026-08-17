@@ -77,6 +77,15 @@ async function main(): Promise<void> {
     } else {
       fail(`selector de palos: esperaba 2 opciones, hay ${suitOptions.length}`);
     }
+    // En el primer arranque NO hay salida, y es a propósito: detrás no hay
+    // ninguna partida que el jugador haya visto todavía. En los demás casos sí
+    // la hay, y esa asimetría la vigila B6.11.
+    if ((await page.$(".suit-select__cancel")) === null) {
+      ok("B6.13 el primer arranque obliga a elegir dificultad (sin Cancelar)");
+    } else {
+      fail("B6.13 el primer arranque ofrece Cancelar y no debería");
+    }
+
     await suitOptions[1].click(); // 4 palos (baraja completa)
     await page.waitForTimeout(120);
 
@@ -570,6 +579,98 @@ async function main(): Promise<void> {
       ok("B6.8 y también al recibir el foco con el teclado");
     } else {
       fail(`B6.8 con el foco el borde es ${bordeFoco}, esperaba ${AMARILLO}`);
+    }
+
+    // ---------- 11. Del selector siempre se puede salir si hay algo detrás ----
+    // Reportado en producción el 17/08/2026: tras "Jugar otra" el selector no
+    // tenía Cancelar NI respondía a Escape. Con el calendario del reto dentro,
+    // el jugador que solo quería mirar su avance se quedaba sin forma de volver
+    // a su resultado. Botón y tecla venían de dos condiciones iguales escritas
+    // por separado, y la del fin de partida se quedó fuera de las dos.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(150);
+
+    // Que nadie clasifique: con el top local lleno, el diálogo del nombre no se
+    // cruza en el camino y se llega limpio al cartel de fin de partida.
+    await page.evaluate(() => {
+      const tope = Array.from({ length: 10 }, (_, i) => ({
+        name: "TOPE",
+        score: 100000 - i,
+        suitMode: 4,
+        date: "2026-01-01",
+        ts: 1 + i
+      }));
+      for (const tabla of ["won-2", "won-4", "lost-2", "lost-4"]) {
+        window.localStorage.setItem(`solnap.lb.${tabla}`, JSON.stringify(tope));
+      }
+    });
+
+    // Perder de la forma más corta que permiten las reglas: repartir sin mover
+    // hasta agotar el montón en las cuatro rondas.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    let repartos = 0;
+    while (repartos < 300 && (await page.$(".overlay__panel--lose, .overlay__panel--win")) === null) {
+      await page.keyboard.press("Space");
+      repartos++;
+      await page.waitForTimeout(5);
+    }
+
+    const finDePartida = await page.$(".overlay__panel--lose, .overlay__panel--win");
+    if (finDePartida === null) {
+      fail(`B6.11 la partida no terminó tras ${repartos} repartos sin mover`);
+    } else {
+      const seguirJugando = ".overlay__panel--lose .hud__btn--primary, .overlay__panel--win .hud__btn--primary";
+
+      await page.click(seguirJugando);
+      await page.waitForSelector(".suit-select", { timeout: 5000 });
+      if (await page.$(".suit-select__cancel")) {
+        ok(`B6.11 el selector del fin de partida tiene botón para volver (perdida en ${repartos} repartos)`);
+      } else {
+        fail("B6.11 el selector del fin de partida sigue sin botón para volver");
+      }
+
+      // Escape tiene que hacer exactamente lo mismo que el botón: si vuelven a
+      // ser dos caminos distintos, uno de los dos volverá a quedarse atrás.
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(250);
+      const cerradoConEsc = (await page.$(".suit-select")) === null;
+      const resultadoIntacto =
+        (await page.$(".overlay__panel--lose, .overlay__panel--win")) !== null;
+      if (cerradoConEsc && resultadoIntacto) {
+        ok("B6.12 Escape cierra el selector y devuelve el resultado de la partida");
+      } else {
+        fail(
+          `B6.12 Escape: selector cerrado=${cerradoConEsc}, resultado detrás=${resultadoIntacto}`
+        );
+      }
+
+      // Y el botón, lo mismo: cancelar no puede costar la puntuación.
+      //
+      // Si el paso anterior dejó el diálogo abierto no se sigue adelante: sin
+      // salida, cualquier clic posterior choca contra el propio diálogo y la
+      // prueba muere de timeout en vez de decir qué falla.
+      const cancelar = cerradoConEsc
+        ? await (async () => {
+            await page.click(seguirJugando);
+            return page
+              .waitForSelector(".suit-select__cancel", { timeout: 3000 })
+              .catch(() => null);
+          })()
+        : null;
+
+      if (cancelar === null) {
+        fail("B6.14 no hay botón de salida que probar en el selector del fin de partida");
+      } else {
+        const puntosAntes = await page.textContent(".overlay__stats dd");
+        await cancelar.click();
+        await page.waitForTimeout(250);
+        const puntosDespues = await page.textContent(".overlay__stats dd");
+        if ((await page.$(".suit-select")) === null && puntosAntes === puntosDespues) {
+          ok(`B6.14 el botón devuelve el mismo resultado (${puntosDespues?.trim()} puntos)`);
+        } else {
+          fail(`B6.14 tras cancelar: puntos ${puntosAntes?.trim()} → ${puntosDespues?.trim()}`);
+        }
+      }
     }
   } finally {
     await browser.close();

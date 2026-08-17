@@ -68,8 +68,8 @@ export default function App() {
 
   /**
    * pendingSuitSource: cuando está establecido, muestra el selector de palos.
-   * "hud"      → el jugador pulsó "Nueva" (puede cancelar y seguir la partida).
-   * "gameover" → el jugador pulsó "Jugar otra" (no puede cancelar).
+   * "hud"      → el jugador pulsó "Nueva" (vuelve a la partida en curso).
+   * "gameover" → el jugador pulsó "Jugar otra" (vuelve al resultado).
    * "firstrun" → flujo de carga inicial: se muestra tras cerrar las reglas.
    * Se inicializa siempre a "firstrun" — el render del selector está
    * condicionado a !showRules para que el flujo sea secuencial (reglas → palos).
@@ -77,6 +77,21 @@ export default function App() {
   const [pendingSuitSource, setPendingSuitSource] = useState<
     "hud" | "gameover" | "firstrun" | null
   >(firstRun ? "firstrun" : null);
+
+  /**
+   * ¿Se puede salir del selector sin empezar partida? Sí siempre que haya algo
+   * detrás a lo que volver: la partida en curso o el resultado que se acaba de
+   * ver — `GameOverlay` sigue montado debajo mientras la partida esté acabada,
+   * así que cancelar devuelve la puntuación y el tiempo intactos. Solo el
+   * arranque inicial obliga a elegir: detrás no hay nada que el jugador haya
+   * visto todavía.
+   *
+   * Un único valor para el botón y para Escape. Antes eran dos condiciones
+   * iguales escritas por separado y el diálogo del fin de partida se quedó sin
+   * las dos salidas a la vez: ni botón ni tecla, con el calendario del reto
+   * dentro y ninguna forma de volver al resultado.
+   */
+  const canCancelSuits = pendingSuitSource === "hud" || pendingSuitSource === "gameover";
 
   // ── Liga de Campeones ─────────────────────────────────────────────────────
   // El flujo es asíncrono porque la persistencia es en servidor (Supabase):
@@ -279,7 +294,7 @@ export default function App() {
         }
         return;
       }
-      if (pendingSuitSource === "hud" && e.key === "Escape") {
+      if (canCancelSuits && e.key === "Escape") {
         e.preventDefault();
         handleSuitCancel();
         return;
@@ -402,7 +417,7 @@ export default function App() {
       {!showRules && pendingSuitSource !== null && (
         <SuitSelectDialog
           lang={lang}
-          canCancel={pendingSuitSource === "hud"}
+          canCancel={canCancelSuits}
           onSelect={handleSuitSelect}
           onCancel={handleSuitCancel}
           dailyStreak={dailyStreak.current}
