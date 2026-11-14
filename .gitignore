@@ -47,3 +47,7 @@ docs/notas/
 # Partidas ganadas que respaldan cada semilla del reto. Son la respuesta:
 # fuera del repo para no publicar la solucion.
 scripts/.solutions
+
+# Configuración local de herramientas del autor: fuera del repo.
+.mcp.json
+skills-lock.json

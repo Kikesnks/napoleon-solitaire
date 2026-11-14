@@ -10,10 +10,16 @@
 
 CREATE TABLE IF NOT EXISTS leaderboard (
   id BIGSERIAL PRIMARY KEY,
+  -- Qué solitario escribió la fila. La tabla la comparten varios juegos y esta
+  -- columna es lo único que separa sus puntuaciones. La pone el backend de cada
+  -- juego como constante ('napoleon' en este); nunca llega desde el cliente.
+  game TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('won', 'lost')),
   name TEXT NOT NULL CHECK (length(trim(name)) > 0 AND length(name) <= 30),
   score INTEGER NOT NULL CHECK (score >= 0),
-  suit_mode SMALLINT NOT NULL CHECK (suit_mode IN (2, 4)),
+  -- 0 = juego sin modos (otros solitarios de la misma tabla). Napoleón solo
+  -- guarda 2 o 4: su backend rechaza cualquier otro valor antes de insertar.
+  suit_mode SMALLINT NOT NULL CHECK (suit_mode = ANY (ARRAY[0, 2, 4])),
   date TEXT NOT NULL,
   ts BIGINT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -27,12 +33,15 @@ CREATE TABLE IF NOT EXISTS leaderboard (
 -- así que mezclarlas premiaba la dificultad baja. No hizo falta crear ninguna
 -- tabla nueva para separarlas, porque `category` y `suit_mode` ya eran dos
 -- columnas distintas: cada fila que ya existía cae sola en la tabla que le toca.
-CREATE INDEX IF NOT EXISTS leaderboard_board_idx
-  ON leaderboard (category, suit_mode, score DESC, ts ASC);
+--
+-- `game` va delante porque todas las consultas filtran primero por juego.
+CREATE INDEX IF NOT EXISTS idx_leaderboard_game
+  ON leaderboard (game, category, suit_mode, score DESC, ts ASC);
 
--- El índice anterior, sin `suit_mode`, ya no cubre ninguna consulta: todas
--- filtran por las dos columnas. Se puede borrar sin miedo, y si esto se ejecuta
--- en una base recién creada simplemente no existe.
+-- Los índices anteriores, sin `game`, ya no encabezan ninguna consulta: todas
+-- filtran por juego. Se pueden borrar sin miedo, y si esto se ejecuta en una
+-- base recién creada simplemente no existen.
+DROP INDEX IF EXISTS leaderboard_board_idx;
 DROP INDEX IF EXISTS leaderboard_top_idx;
 
 -- RLS: lectura pública, escritura sólo con service_role (backend).

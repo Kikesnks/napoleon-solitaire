@@ -252,6 +252,98 @@ async function main(): Promise<void> {
     fail(`B8.10 tras repetir, la tabla tiene ${otraVez.length} entradas`);
   }
 
+  // ── S1 · El servidor no deja guardar suit_mode = 0 ────────────────────────
+  // La tabla es compartida y su CHECK ya admite 0 (juegos sin modos), así que
+  // la base de datos no pararía a un Napoleón que lo enviara: lo tiene que
+  // parar `submit.ts`, y ANTES de llamar a Supabase.
+  //
+  // Se llama al manejador de verdad con una partida real (perdida, 4 palos) y
+  // un `fetch` de mentira que apunta cada llamada que saldría hacia Supabase.
+  {
+    const { default: submit } = await import("../api/leaderboard/submit.js");
+    const { createInitialState } = await import("../src/game/state.js");
+    const { reduceAction } = await import("../src/game/rules.js");
+
+    let partida = createInitialState({ seed: 42, suitMode: 4 });
+    const acciones: { type: "deal" }[] = [];
+    while (partida.status === "playing" && acciones.length < 500) {
+      partida = reduceAction(partida, { type: "deal" });
+      acciones.push({ type: "deal" });
+    }
+    const buena = {
+      name: "test-s1",
+      category: boardId("lost", 4) as string,
+      score: partida.score,
+      suitMode: 4 as number,
+      seed: 42,
+      actions: acciones
+    };
+
+    const fetchReal = globalThis.fetch;
+    const envUrl = process.env.SUPABASE_URL;
+    const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.SUPABASE_URL = "http://supabase.invalid";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "clave-de-test";
+    let llamadas = 0;
+    globalThis.fetch = (async () => {
+      llamadas++;
+      return new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+
+    const enviar = async (body: unknown): Promise<{ status: number; llamadas: number }> => {
+      llamadas = 0;
+      let status = 0;
+      const res = {
+        status(code: number) {
+          status = code;
+          return res;
+        },
+        json() {
+          return res;
+        },
+        setHeader() {
+          return res;
+        }
+      };
+      await submit({ method: "POST", body } as never, res as never);
+      return { status, llamadas };
+    };
+
+    try {
+      // Control: la misma partida sin tocar SÍ llega a Supabase. Sin esto, los
+      // 400 de abajo podrían deberse a que la partida de prueba está mal hecha.
+      const control = await enviar(buena);
+      if (partida.status === "lost" && control.status === 200 && control.llamadas === 2) {
+        ok("S1.0 control: la partida sin manipular se acepta y llega a Supabase (insert + select)");
+      } else {
+        fail(
+          `S1.0 control: estado ${partida.status}, HTTP ${control.status}, ${control.llamadas} llamada(s)`
+        );
+      }
+
+      const casos: [string, unknown][] = [
+        ["suitMode: 0", { ...buena, suitMode: 0 }],
+        ["suitMode: 0 y tabla 'lost-0'", { ...buena, suitMode: 0, category: "lost-0" }],
+        ['suitMode: "4" (texto)', { ...buena, suitMode: "4" }],
+        ["tabla 'lost-0' con suitMode: 4", { ...buena, category: "lost-0" }]
+      ];
+      for (const [nombre, body] of casos) {
+        const r = await enviar(body);
+        if (r.status === 400 && r.llamadas === 0) {
+          ok(`S1 ${nombre} → 400 sin llegar a Supabase`);
+        } else {
+          fail(`S1 ${nombre} → HTTP ${r.status} con ${r.llamadas} llamada(s) a Supabase`);
+        }
+      }
+    } finally {
+      globalThis.fetch = fetchReal;
+      if (envUrl === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = envUrl;
+      if (envKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = envKey;
+    }
+  }
+
   // ── Sin almacenamiento en absoluto (modo privado) ─────────────────────────
   delete (globalThis as unknown as { window?: unknown }).window;
   const noStorage = makeBoard(null);

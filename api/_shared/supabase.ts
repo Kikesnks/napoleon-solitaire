@@ -4,6 +4,17 @@
 
 import type { LeaderboardCategory } from "../../src/game/leaderboard-types.js";
 
+/**
+ * Qué juego es este backend. La tabla `leaderboard` la comparten varios
+ * solitarios y la columna `game` es lo único que separa sus puntuaciones.
+ *
+ * Es una constante del servidor y se define SOLO aquí: `selectTop` la pone
+ * siempre en el filtro e `insertEntry` la manda siempre. **Nunca se lee de la
+ * petición**: si viniera del cliente, cualquiera podría escribir en el ranking
+ * de otro juego con una partida validada por las reglas de este.
+ */
+const GAME = "napoleon";
+
 export interface DbEntry {
   name: string;
   score: number;
@@ -53,6 +64,7 @@ export async function selectTop(
   const env = readEnv();
   const params = new URLSearchParams({
     select: "name,score,suit_mode,date,ts",
+    game: `eq.${GAME}`,
     category: `eq.${category}`,
     suit_mode: `eq.${suitMode}`,
     order: "score.desc,ts.asc",
@@ -75,7 +87,8 @@ export async function insertEntry(
   const res = await fetch(`${env.url}/rest/v1/leaderboard`, {
     method: "POST",
     headers: headers(env, { Prefer: "return=minimal" }),
-    body: JSON.stringify({ category, ...entry })
+    // `game` va al final para que nada de lo anterior pueda pisarlo.
+    body: JSON.stringify({ category, ...entry, game: GAME })
   });
   if (!res.ok) {
     throw new Error(`Supabase INSERT ${res.status}: ${await res.text()}`);

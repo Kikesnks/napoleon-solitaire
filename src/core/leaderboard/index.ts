@@ -72,7 +72,8 @@ export function createLeaderboard<E extends EntryBase, P extends PayloadBase>(
     async qualifies(category, score) {
       const entries = await withFallback((b) => b.list(category));
       if (entries.length < opts.max) return true;
-      return score > entries[entries.length - 1].score;
+      const last = entries.at(-1);
+      return last === undefined || score > last.score;
     },
 
     getScope: () => scope

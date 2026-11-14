@@ -11,7 +11,7 @@
     "pack:portal": "tsx scripts/pack-portal.ts",
     "preview": "vite preview --host",
     "preview:portal": "vite preview --outDir dist-portal --host --port 4200 --strictPort",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.api.json --noEmit",
     "test:architecture": "tsx scripts/architecture-test.ts",
     "test:smoke": "tsx scripts/smoke.ts",
     "test:daily": "tsx scripts/daily-test.ts",

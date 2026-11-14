@@ -15,7 +15,8 @@ export default async function handler(
   }
 
   try {
-    await selectTop("won", 1);
+    // Da igual qué tabla se consulte: lo que cuenta es que haya una lectura.
+    await selectTop("won", 4, 1);
     return res.status(200).json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
