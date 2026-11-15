@@ -56,7 +56,7 @@ function rand(min: number, max: number): number {
 }
 
 function pickColor(): string {
-  return COLORS[Math.floor(Math.random() * COLORS.length)];
+  return COLORS[Math.floor(Math.random() * COLORS.length)] ?? "#ffd166";
 }
 
 const SHAPES: FallShape[] = ["square", "circle", "strip"];
@@ -72,7 +72,7 @@ function generateFall(): FallParticle[] {
     duration: rand(2.5, 5.5),
     rotation: rand(-360, 720),
     drift: rand(-90, 90),
-    shape: SHAPES[Math.floor(Math.random() * SHAPES.length)]
+    shape: SHAPES[Math.floor(Math.random() * SHAPES.length)] ?? "square"
   }));
 }
 

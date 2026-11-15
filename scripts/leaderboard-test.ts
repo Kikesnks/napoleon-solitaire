@@ -344,6 +344,48 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── G1 · El cronómetro de una partida retomada ────────────────────────────
+  // Se guardaba la hora de inicio y, al volver días después, el reloj contaba
+  // desde entonces ("9974:10"). Lo que se conserva es el tiempo JUGADO.
+  {
+    const { saveGame, loadGame } = await import("../src/game/save.js");
+    const { createInitialState } = await import("../src/game/state.js");
+    const { reduceAction } = await import("../src/game/rules.js");
+    const T0 = 1_800_000_000_000;
+    const MINUTO = 60_000;
+    const SEMANA = 7 * 24 * 60 * MINUTO;
+
+    let partida = createInitialState({ seed: 42, suitMode: 4, now: T0 });
+    partida = reduceAction(partida, { type: "deal" });
+    saveGame(partida, T0 + 5 * MINUTO); // se guarda con 5 minutos jugados
+
+    const alVolver = T0 + SEMANA;
+    const retomada = loadGame(alVolver);
+    if (retomada && alVolver - retomada.startedAt === 5 * MINUTO) {
+      ok("G1.1 una partida retomada una semana después sigue en 05:00, no en 10080:00");
+    } else {
+      fail(`G1.1 cronómetro al retomar: ${retomada ? alVolver - retomada.startedAt : "sin partida"} ms`);
+    }
+    if (retomada && retomada.actionLog.length === 1 && retomada.seed === 42) {
+      ok("G1.2 la partida retomada es la misma (semilla y acciones)");
+    } else {
+      fail("G1.2 la partida retomada no coincide con la guardada");
+    }
+
+    // Guardado del formato anterior: traía `startedAt` y no `elapsedMs`.
+    store.set(
+      "solnap.game",
+      JSON.stringify({ v: 1, seed: 42, suitMode: 4, startedAt: T0, actions: [{ type: "deal" }] })
+    );
+    const antigua = loadGame(alVolver);
+    if (antigua && antigua.startedAt === alVolver) {
+      ok("G1.3 un guardado antiguo se retoma con el cronómetro a cero, no desde su fecha");
+    } else {
+      fail(`G1.3 guardado antiguo: ${antigua ? alVolver - antigua.startedAt : "sin partida"} ms`);
+    }
+    store.delete("solnap.game");
+  }
+
   // ── Sin almacenamiento en absoluto (modo privado) ─────────────────────────
   delete (globalThis as unknown as { window?: unknown }).window;
   const noStorage = makeBoard(null);

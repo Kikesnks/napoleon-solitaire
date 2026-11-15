@@ -151,7 +151,7 @@ function keyOf(d: Date): string {
  * romperse porque el país haya adelantado el reloj.
  */
 function previousKey(date: string): string {
-  const [y, m, d] = date.split("-").map(Number);
+  const [y = 0, m = 1, d = 1] = date.split("-").map(Number);
   const prev = new Date(y, m - 1, d, 12);
   prev.setDate(prev.getDate() - 1);
   return keyOf(prev);

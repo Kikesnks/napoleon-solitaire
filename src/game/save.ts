@@ -21,12 +21,24 @@ interface SavedGame {
   v: 1;
   seed: number;
   suitMode: SuitMode;
-  startedAt: number;
+  /**
+   * Tiempo JUGADO hasta el momento de guardar, en milisegundos.
+   *
+   * Antes se guardaba `startedAt`, la hora de reloj a la que empezó la partida,
+   * y al retomarla el cronómetro contaba desde ahí: quien volvía una semana
+   * después se encontraba un `9974:10`. Lo que hay que conservar es cuánto se
+   * ha jugado, no cuándo se empezó. Los guardados antiguos no traen este campo
+   * y se retoman con el cronómetro a cero.
+   */
+  elapsedMs?: number;
   actions: LoggedAction[];
 }
 
-/** Guarda la partida en curso. Las terminadas no se guardan: ya no se retoman. */
-export function saveGame(state: GameState): void {
+/**
+ * Guarda la partida en curso. Las terminadas no se guardan: ya no se retoman.
+ * `now` solo existe para poder probarlo sin depender del reloj.
+ */
+export function saveGame(state: GameState, now: number = Date.now()): void {
   if (state.status !== "playing") {
     clearSavedGame();
     return;
@@ -35,7 +47,7 @@ export function saveGame(state: GameState): void {
     v: 1,
     seed: state.seed,
     suitMode: state.suitMode,
-    startedAt: state.startedAt,
+    elapsedMs: Math.max(0, now - state.startedAt),
     actions: state.actionLog
   };
   writePref(SAVE_KEY, JSON.stringify(save));
@@ -50,7 +62,7 @@ export function clearSavedGame(): void {
  * `null` si no hay nada guardado o si el guardado no es utilizable — ante la
  * duda, empezar una partida nueva es preferible a arrancar roto.
  */
-export function loadGame(): GameState | null {
+export function loadGame(now: number = Date.now()): GameState | null {
   const raw = readPref(SAVE_KEY);
   if (!raw) return null;
 
@@ -68,8 +80,14 @@ export function loadGame(): GameState | null {
     // Si la partida guardada ya estaba acabada, no se retoma.
     if (state.status !== "playing") return null;
 
-    // Se conserva el cronómetro: el jugador no gana tiempo por recargar.
-    return { ...state, startedAt: save.startedAt };
+    // Se conserva el tiempo jugado: el jugador no gana tiempo por recargar, y
+    // tampoco se le cuenta el que ha pasado con la página cerrada. El reloj
+    // sigue desde donde se quedó: "empezó" hace exactamente lo que llevaba jugado.
+    const played =
+      typeof save.elapsedMs === "number" && Number.isFinite(save.elapsedMs) && save.elapsedMs > 0
+        ? save.elapsedMs
+        : 0;
+    return { ...state, startedAt: now - played };
   } catch {
     // Guardado corrupto o de una versión de reglas incompatible.
     return null;
